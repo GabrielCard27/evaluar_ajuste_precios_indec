@@ -1,0 +1,31 @@
+name: Actualizar datos ICC
+
+on:
+  schedule:
+    # Corre el día 20 de cada mes a las 14:00 UTC (11:00 ARG)
+    # INDEC suele publicar el ICC entre el 15 y el 20 de cada mes.
+    - cron: '0 14 20 * *'
+  workflow_dispatch: {}   # permite correrlo manualmente desde la pestaña Actions
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Actualizar data/icc-history.json
+        run: node scripts/update-data.js
+
+      - name: Commit y push si hubo cambios
+        run: |
+          git config user.name "icc-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/icc-history.json
+          git diff --staged --quiet || git commit -m "chore: actualización automática ICC $(date +%Y-%m)"
+          git push

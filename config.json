@@ -1,0 +1,12 @@
+{
+  "_comentario": "IDs de series en la API de Series de Tiempo (apis.datos.gob.ar/series/api/series). Confirmá/actualizá estos IDs desde https://datos.gob.ar/dataset/sspm-indice-costo-construccion-icc antes de activar la automatización — INDEC no expone un endpoint JSON propio para el ICC, así que este dataset republicado es el camino de automatización recomendado. Si los IDs cambian o no están disponibles, el script cae en modo manual (ver update-data.js).",
+  "series_ids": {
+    "nivel_general": "REEMPLAZAR_CON_ID_REAL",
+    "materiales": "REEMPLAZAR_CON_ID_REAL",
+    "mano_obra": "REEMPLAZAR_CON_ID_REAL",
+    "gastos_generales": "REEMPLAZAR_CON_ID_REAL"
+  },
+  "representation_mode": "percent_change",
+  "output_path": "data/icc-history.json",
+  "threshold_pct": 5
+}

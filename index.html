@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICC Control Room — Monitor de Adecuación Contractual</title>
+<style>
+  :root{
+    --bg:            #0a0e13;
+    --bg-panel:      #11171e;
+    --bg-panel-2:    #161d26;
+    --grid:          #1e2831;
+    --border:        #232e39;
+    --text:          #e7edf3;
+    --text-dim:      #7c8a97;
+    --text-faint:    #4d5a66;
+    --amber:         #e8a33d;
+    --amber-dim:     #6b4d22;
+    --cyan:          #49d3c6;
+    --cyan-dim:      #1f4f4a;
+    --red:           #e2574c;
+    --red-dim:       #5c2723;
+    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh;}
+  body{padding-bottom:60px;}
+
+  /* ---- Top bar ---- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, var(--bg-panel), var(--bg));
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-dot{width:9px; height:9px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); animation:pulse 2.2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .brand-text h1{font-size:14px; letter-spacing:.08em; text-transform:uppercase; font-weight:700;}
+  .brand-text p{font-size:10.5px; color:var(--text-dim); font-family:var(--mono); letter-spacing:.02em;}
+  .status-chip{
+    font-family:var(--mono); font-size:10.5px; color:var(--text-dim);
+    border:1px solid var(--border); padding:4px 10px; border-radius:20px;
+    display:flex; align-items:center; gap:6px;
+  }
+
+  /* ---- Tabs ---- */
+  .tabs{
+    display:flex; gap:2px; overflow-x:auto; padding:0 12px;
+    border-bottom:1px solid var(--border); background:var(--bg);
+    position:sticky; top:57px; z-index:19;
+  }
+  .tab{
+    font-family:var(--mono); font-size:11px; letter-spacing:.03em; color:var(--text-dim);
+    padding:12px 14px; cursor:pointer; white-space:nowrap; border-bottom:2px solid transparent;
+    display:flex; align-items:center; gap:6px;
+  }
+  .tab .n{color:var(--text-faint); font-weight:700;}
+  .tab.active{color:var(--amber); border-bottom-color:var(--amber);}
+  .tab.active .n{color:var(--amber);}
+  .tab:hover:not(.active){color:var(--text);}
+
+  .screen{display:none; padding:20px 16px 10px; max-width:1080px; margin:0 auto;}
+  .screen.active{display:block; animation:fadein .25s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  .screen-head{margin-bottom:16px;}
+  .screen-head .eyebrow{font-family:var(--mono); font-size:10.5px; color:var(--amber); letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px;}
+  .screen-head h2{font-size:19px; font-weight:700;}
+  .screen-head p{font-size:12.5px; color:var(--text-dim); margin-top:4px; max-width:60ch;}
+
+  /* ---- Panels / grid ---- */
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:12px; margin-bottom:16px;}
+  .panel{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px;
+  }
+  .panel h3{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); font-weight:600; margin-bottom:10px;}
+  .kpi{font-family:var(--mono); font-size:26px; font-weight:700; line-height:1;}
+  .kpi small{font-size:11px; color:var(--text-dim); font-weight:400; display:block; margin-top:6px; font-family:var(--sans);}
+  .kpi.amber{color:var(--amber);}
+  .kpi.cyan{color:var(--cyan);}
+  .kpi.red{color:var(--red);}
+
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th,td{padding:8px 10px; text-align:right; border-bottom:1px solid var(--grid); font-family:var(--mono); font-variant-numeric:tabular-nums;}
+  th:first-child, td:first-child{text-align:left; font-family:var(--sans);}
+  th{color:var(--text-dim); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .tag{display:inline-block; font-size:9.5px; font-family:var(--mono); padding:1px 6px; border-radius:8px; letter-spacing:.03em;}
+  .tag.oficial{background:var(--cyan-dim); color:var(--cyan);}
+  .tag.estimado{background:var(--amber-dim); color:var(--amber);}
+  .tag.corte{background:var(--red-dim); color:var(--red);}
+
+  svg{display:block; width:100%; height:auto;}
+  .axis-label{font-family:var(--mono); font-size:9px; fill:var(--text-faint);}
+  .gridline{stroke:var(--grid); stroke-width:1;}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:11px; font-family:var(--mono); color:var(--text-dim);}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend i{width:9px; height:9px; border-radius:2px; display:inline-block;}
+
+  /* ---- Timeline (signature element) ---- */
+  .timeline-wrap{overflow-x:auto; padding:10px 0 26px;}
+  .timeline{position:relative; height:120px; min-width:640px; margin:0 10px;}
+  .timeline-track{position:absolute; top:54px; left:0; right:0; height:2px; background:var(--border);}
+  .tl-node{position:absolute; top:44px; transform:translateX(-50%);}
+  .tl-dot{width:14px; height:14px; border-radius:50%; margin:0 auto; position:relative; z-index:2;}
+  .tl-dot.base{background:var(--text-dim); box-shadow:0 0 0 4px var(--bg), 0 0 0 5px var(--border);}
+  .tl-dot.corte{background:var(--red); box-shadow:0 0 10px var(--red), 0 0 0 4px var(--bg);}
+  .tl-dot.now{background:var(--amber); box-shadow:0 0 12px var(--amber), 0 0 0 4px var(--bg); animation:pulse 1.8s ease-in-out infinite;}
+  .tl-label{position:absolute; top:66px; left:50%; transform:translateX(-50%); text-align:center; width:110px;}
+  .tl-label .p{font-family:var(--mono); font-size:10px; color:var(--text-dim);}
+  .tl-label .v{font-family:var(--mono); font-size:11px; font-weight:700; margin-top:2px;}
+  .tl-label .v.red{color:var(--red);}
+  .tl-label .v.amber{color:var(--amber);}
+  .tl-span{position:absolute; top:16px; text-align:center; font-family:var(--mono); font-size:9.5px; color:var(--text-faint);}
+
+  /* ---- Gauge ---- */
+  .gauge-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
+  .gauge-bar{flex:1; min-width:200px; height:10px; border-radius:6px; background:var(--grid); position:relative; overflow:hidden;}
+  .gauge-fill{height:100%; border-radius:6px; background:linear-gradient(90deg, var(--cyan), var(--amber)); transition:width .4s ease;}
+  .gauge-fill.danger{background:linear-gradient(90deg, var(--amber), var(--red));}
+  .gauge-mark{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--red); right:0;}
+
+  /* ---- Forms ---- */
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin-bottom:14px;}
+  label{display:block; font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; font-family:var(--mono);}
+  input, select{
+    width:100%; background:var(--bg-panel-2); border:1px solid var(--border); color:var(--text);
+    padding:9px 10px; border-radius:6px; font-family:var(--mono); font-size:13px;
+  }
+  input:focus, select:focus{outline:none; border-color:var(--amber);}
+  button.run{
+    background:var(--amber); color:#1a1204; border:none; padding:10px 22px; border-radius:6px;
+    font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.04em; cursor:pointer;
+    text-transform:uppercase;
+  }
+  button.run:hover{background:#f2b654;}
+
+  .result-block{display:none; margin-top:18px;}
+  .result-block.show{display:block; animation:fadein .3s ease;}
+  .impact-banner{
+    border:1px solid var(--red-dim); background:linear-gradient(135deg, rgba(226,87,76,.08), transparent);
+    border-radius:10px; padding:16px; margin-top:12px;
+  }
+  .impact-banner .amt{font-family:var(--mono); font-size:30px; font-weight:700; color:var(--red);}
+  .impact-banner p{font-size:12px; color:var(--text-dim); margin-top:4px;}
+
+  footer{text-align:center; padding:24px 16px; font-size:10.5px; color:var(--text-faint); font-family:var(--mono);}
+  a{color:var(--cyan);}
+
+  @media (max-width:560px){
+    .kpi{font-size:21px;}
+    th,td{padding:6px 6px; font-size:11px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <div class="brand-text">
+      <h1>ICC Control Room</h1>
+      <p id="last-update">cargando datos…</p>
+    </div>
+  </div>
+  <div class="status-chip"><span id="engine-status">●</span> <span id="engine-status-text">motor activo</span></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-screen="monitor"><span class="n">01</span> Monitor ICC</div>
+  <div class="tab" data-screen="cortes"><span class="n">02</span> Cortes de Adecuación</div>
+  <div class="tab" data-screen="exposicion"><span class="n">03</span> Exposición</div>
+  <div class="tab" data-screen="simulador"><span class="n">04</span> Simulador</div>
+  <div class="tab" data-screen="equilibrio"><span class="n">05</span> Equilibrio Económico-Financiero</div>
+</div>
+
+<!-- 01 MONITOR -->
+<section class="screen active" id="screen-monitor">
+  <div class="screen-head">
+    <div class="eyebrow">Datos → Información</div>
+    <h2>Evolución del ICC</h2>
+    <p>Nivel general y sus tres componentes, en base 100 al inicio de la serie cargada.</p>
+  </div>
+  <div class="grid" id="monitor-kpis"></div>
+  <div class="panel">
+    <h3>Evolución de índices</h3>
+    <div id="chart-evolucion"></div>
+    <div class="legend" id="legend-evolucion"></div>
+  </div>
+  <div class="panel" style="margin-top:12px;">
+    <h3>Serie mensual</h3>
+    <div style="overflow-x:auto;"><table id="tabla-serie"></table></div>
+  </div>
+</section>
+
+<!-- 02 CORTES -->
+<section class="screen" id="screen-cortes">
+  <div class="screen-head">
+    <div class="eyebrow">Motor de Cortes</div>
+    <h2>Línea temporal de adecuación</h2>
+    <p>Cada vez que la variación acumulada desde el último punto de referencia alcanza el umbral (5% por defecto), el sistema registra un corte y reinicia la acumulación.</p>
+  </div>
+  <div class="panel">
+    <h3>Recorrido de cortes</h3>
+    <div class="timeline-wrap"><div class="timeline" id="timeline"></div></div>
+  </div>
+  <div class="panel" style="margin-top:12px;">
+    <h3>Detalle de cortes registrados</h3>
+    <div style="overflow-x:auto;"><table id="tabla-cortes"></table></div>
+  </div>
+</section>
+
+<!-- 03 EXPOSICION -->
+<section class="screen" id="screen-exposicion">
+  <div class="screen-head">
+    <div class="eyebrow">Información → Conocimiento</div>
+    <h2>Exposición actual</h2>
+    <p>Distancia entre la situación actual y el próximo corte de adecuación.</p>
+  </div>
+  <div class="grid" id="exposicion-kpis"></div>
+  <div class="panel">
+    <h3>Distancia al próximo corte (umbral 5%)</h3>
+    <div class="gauge-wrap">
+      <div class="gauge-bar"><div class="gauge-mark"></div><div class="gauge-fill" id="gauge-fill"></div></div>
+      <div class="kpi amber" id="gauge-value" style="font-size:20px;">0%</div>
+    </div>
+    <p style="font-size:11.5px; color:var(--text-dim); margin-top:10px;" id="exposicion-texto"></p>
+  </div>
+</section>
+
+<!-- 04 SIMULADOR -->
+<section class="screen" id="screen-simulador">
+  <div class="screen-head">
+    <div class="eyebrow">Conocimiento → Decisión</div>
+    <h2>Simulador de adecuación</h2>
+    <p>Ingresá un contrato y un rango de meses para estimar cortes, exposición e impacto económico.</p>
+  </div>
+  <div class="panel">
+    <div class="form-grid">
+      <div>
+        <label>Monto contractual (ARS)</label>
+        <input type="number" id="sim-monto" value="500000000" step="1000000">
+      </div>
+      <div>
+        <label>Mes base</label>
+        <select id="sim-mesbase"></select>
+      </div>
+      <div>
+        <label>Mes de análisis</label>
+        <select id="sim-mesanalisis"></select>
+      </div>
+      <div>
+        <label>Umbral de adecuación (%)</label>
+        <input type="number" id="sim-umbral" value="5" step="0.1">
+      </div>
+    </div>
+    <button class="run" id="sim-run">Calcular</button>
+
+    <div class="result-block" id="sim-result">
+      <div class="grid" style="margin-top:16px;" id="sim-kpis"></div>
+      <div class="impact-banner">
+        <div>Impacto económico estimado (descalce no reconocido)</div>
+        <div class="amt" id="sim-impacto">$0</div>
+        <p>Corresponde a la variación acumulada desde el último corte reconocido dentro del rango, aplicada sobre el monto contractual ya adecuado.</p>
+      </div>
+      <div style="overflow-x:auto; margin-top:14px;"><table id="sim-tabla-cortes"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 EQUILIBRIO -->
+<section class="screen" id="screen-equilibrio">
+  <div class="screen-head">
+    <div class="eyebrow">Decisión</div>
+    <h2>Equilibrio económico-financiero</h2>
+    <p>Comparación entre la evolución real del costo (ICC) y el monto contractual, que solo se ajusta en cada corte de adecuación. El área entre ambas curvas es el descalce.</p>
+  </div>
+  <div class="panel">
+    <h3>Costo real vs. contrato ajustado</h3>
+    <div id="chart-equilibrio"></div>
+    <div class="legend" id="legend-equilibrio"></div>
+  </div>
+</section>
+
+<footer>ICC Control Room · datos: INDEC (Índice del Costo de la Construcción, Gran Buenos Aires) · construido para automatizar el seguimiento de adecuaciones contractuales</footer>
+
+<script>
+/* ============================================================
+   DATA — se intenta cargar data/icc-history.json (actualizado
+   por scripts/update-data.js); si falla (ej. archivo abierto
+   localmente sin servidor), se usa esta copia semilla embebida.
+   ============================================================ */
+const FALLBACK_DATA = {"meta": {"fuente": "INDEC - \u00cdndice del Costo de la Construcci\u00f3n en el Gran Buenos Aires (ICC)", "base_index": "2025-12", "nota": "Los valores 'nivel_general' etc. son variaciones % mensuales publicadas por INDEC. El per\u00edodo 2026-05 est\u00e1 marcado como 'estimado' porque no se pudo confirmar el dato oficial al momento de construir este set semilla \u2014 reemplazar con el valor real (scripts/update-data.js lo hace autom\u00e1ticamente contra la API de series de tiempo).", "ultima_actualizacion": "2026-08-25"}, "periodos": [{"periodo": "2025-12", "var_nivel_general": 1.4, "var_materiales": 1.6, "var_mano_obra": 1.3, "var_gastos_generales": 1.3, "fuente": "INDEC"}, {"periodo": "2026-01", "var_nivel_general": 2.3, "var_materiales": 1.4, "var_mano_obra": 3.1, "var_gastos_generales": 2.2, "fuente": "INDEC"}, {"periodo": "2026-02", "var_nivel_general": 1.9, "var_materiales": 1.5, "var_mano_obra": 1.6, "var_gastos_generales": 4.4, "fuente": "INDEC"}, {"periodo": "2026-03", "var_nivel_general": 2.5, "var_materiales": 1.8, "var_mano_obra": 3.4, "var_gastos_generales": 1.8, "fuente": "INDEC"}, {"periodo": "2026-04", "var_nivel_general": 3.1, "var_materiales": 2.9, "var_mano_obra": 3.1, "var_gastos_generales": 3.3, "fuente": "INDEC"}, {"periodo": "2026-05", "var_nivel_general": 2.4, "var_materiales": 2.0, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "fuente": "estimado"}, {"periodo": "2026-06", "var_nivel_general": 2.6, "var_materiales": 1.8, "var_mano_obra": 3.3, "var_gastos_generales": 2.8, "fuente": "INDEC"}, {"periodo": "2026-07", "var_nivel_general": 2.1, "var_materiales": 1.6, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "fuente": "INDEC"}]};
+
+let RAW = null;
+
+async function loadData(){
+  try{
+    const res = await fetch('data/icc-history.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('no fetch');
+    RAW = await res.json();
+  }catch(e){
+    RAW = FALLBACK_DATA;
+  }
+  init();
+}
+
+/* ============================================================
+   ENGINE
+   ============================================================ */
+function buildSeries(raw){
+  const periodos = raw.periodos;
+  const series = [];
+  let idxG=100, idxM=100, idxMO=100, idxGG=100;
+  periodos.forEach((p, i)=>{
+    if(i>0){
+      idxG = idxG * (1 + p.var_nivel_general/100);
+      idxM = idxM * (1 + p.var_materiales/100);
+      idxMO = idxMO * (1 + p.var_mano_obra/100);
+      idxGG = idxGG * (1 + p.var_gastos_generales/100);
+    }
+    series.push({
+      periodo:p.periodo, fuente:p.fuente,
+      var_general:p.var_nivel_general,
+      idx_general:idxG, idx_materiales:idxM, idx_mano_obra:idxMO, idx_gastos:idxGG
+    });
+  });
+  return series;
+}
+
+// Cut engine: walks the series applying threshold% accumulation rule from idx_general
+function runCutEngine(series, thresholdPct){
+  const cuts = [];
+  let baseIdx = 0; // index into series
+  for(let i=1;i<series.length;i++){
+    const base = series[baseIdx];
+    const acumulada = (series[i].idx_general/base.idx_general - 1) * 100;
+    if(acumulada >= thresholdPct){
+      cuts.push({
+        periodo: series[i].periodo,
+        mesesDesdeBase: i - baseIdx,
+        variacionAcumulada: acumulada,
+        basePeriodo: base.periodo
+      });
+      baseIdx = i;
+    }
+  }
+  // current exposure since last base (cut, or start of series if no cuts)
+  const last = series[series.length-1];
+  const base = series[baseIdx];
+  const exposicion = {
+    basePeriodo: base.periodo,
+    baseIndex: baseIdx,
+    periodoActual: last.periodo,
+    mesesTranscurridos: (series.length-1) - baseIdx,
+    variacionAcumulada: (last.idx_general/base.idx_general - 1) * 100,
+    distanciaAlUmbral: thresholdPct - ((last.idx_general/base.idx_general - 1) * 100)
+  };
+  return {cuts, exposicion};
+}
+
+function fmtPct(n){ return (n>=0?'+':'') + n.toFixed(2) + '%'; }
+function fmtMoney(n){
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
+function fmtPeriodo(p){
+  const [y,m] = p.split('-');
+  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return meses[parseInt(m,10)-1] + '-' + y.slice(2);
+}
+
+/* ============================================================
+   CHART HELPERS (hand-rolled inline SVG, no dependencies)
+   ============================================================ */
+function lineChart(container, series, lines, opts={}){
+  const w = 960, h = 300, pad = {t:16,r:16,b:28,l:44};
+  const innerW = w-pad.l-pad.r, innerH = h-pad.t-pad.b;
+  const allVals = lines.flatMap(l=>series.map(s=>s[l.key]));
+  const min = Math.min(...allVals), max = Math.max(...allVals);
+  const yMin = min - (max-min)*0.08, yMax = max + (max-min)*0.08;
+  const x = i => pad.l + (i/(series.length-1))*innerW;
+  const y = v => pad.t + innerH - ((v-yMin)/(yMax-yMin))*innerH;
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+  // gridlines
+  const gridN=4;
+  for(let g=0; g<=gridN; g++){
+    const gv = yMin + (yMax-yMin)*g/gridN;
+    const gy = y(gv);
+    svg += `<line x1="${pad.l}" y1="${gy}" x2="${w-pad.r}" y2="${gy}" class="gridline"/>`;
+    svg += `<text x="${pad.l-6}" y="${gy+3}" text-anchor="end" class="axis-label">${gv.toFixed(0)}</text>`;
+  }
+  // x labels (every ~2)
+  series.forEach((s,i)=>{
+    if(i % Math.ceil(series.length/7) === 0 || i===series.length-1){
+      svg += `<text x="${x(i)}" y="${h-8}" text-anchor="middle" class="axis-label">${fmtPeriodo(s.periodo)}</text>`;
+    }
+  });
+  // corte markers
+  if(opts.cutPeriods){
+    opts.cutPeriods.forEach(cp=>{
+      const i = series.findIndex(s=>s.periodo===cp);
+      if(i>=0){
+        svg += `<line x1="${x(i)}" y1="${pad.t}" x2="${x(i)}" y2="${h-pad.b}" stroke="var(--red)" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>`;
+      }
+    });
+  }
+  // lines
+  lines.forEach(l=>{
+    let d='';
+    series.forEach((s,i)=>{
+      d += (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(s[l.key]).toFixed(1) + ' ';
+    });
+    svg += `<path d="${d}" fill="none" stroke="${l.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    series.forEach((s,i)=>{
+      svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(s[l.key]).toFixed(1)}" r="2.4" fill="${l.color}"/>`;
+    });
+  });
+  svg += `</svg>`;
+  container.innerHTML = svg;
+}
+
+function legendFor(container, lines){
+  container.innerHTML = lines.map(l=>`<span><i style="background:${l.color}"></i>${l.label}</span>`).join('');
+}
+
+/* ============================================================
+   RENDER: 01 MONITOR
+   ============================================================ */
+function renderMonitor(series){
+  const last = series[series.length-1];
+  const first = series[0];
+  const kpis = document.getElementById('monitor-kpis');
+  kpis.innerHTML = `
+    <div class="panel"><h3>Nivel general</h3><div class="kpi amber">${last.idx_general.toFixed(1)}</div><small>var. mensual ${fmtPct(last.var_general)}</small></div>
+    <div class="panel"><h3>Materiales</h3><div class="kpi cyan">${last.idx_materiales.toFixed(1)}</div><small>base 100 = ${fmtPeriodo(first.periodo)}</small></div>
+    <div class="panel"><h3>Mano de obra</h3><div class="kpi cyan">${last.idx_mano_obra.toFixed(1)}</div><small>base 100 = ${fmtPeriodo(first.periodo)}</small></div>
+    <div class="panel"><h3>Gastos generales</h3><div class="kpi cyan">${last.idx_gastos.toFixed(1)}</div><small>último dato: ${fmtPeriodo(last.periodo)}</small></div>
+  `;
+  const lines = [
+    {key:'idx_general', color:'var(--amber)', label:'Nivel general'},
+    {key:'idx_materiales', color:'var(--cyan)', label:'Materiales'},
+    {key:'idx_mano_obra', color:'#8a7ce8', label:'Mano de obra'},
+    {key:'idx_gastos', color:'#5fb8e0', label:'Gastos generales'},
+  ];
+  lineChart(document.getElementById('chart-evolucion'), series, lines);
+  legendFor(document.getElementById('legend-evolucion'), lines);
+
+  const tbl = document.getElementById('tabla-serie');
+  let html = `<tr><th>Período</th><th>Var. mensual</th><th>Nivel general</th><th>Materiales</th><th>Mano de obra</th><th>Gastos grales.</th><th>Fuente</th></tr>`;
+  series.forEach(s=>{
+    html += `<tr>
+      <td>${fmtPeriodo(s.periodo)}</td>
+      <td>${fmtPct(s.var_general)}</td>
+      <td>${s.idx_general.toFixed(2)}</td>
+      <td>${s.idx_materiales.toFixed(2)}</td>
+      <td>${s.idx_mano_obra.toFixed(2)}</td>
+      <td>${s.idx_gastos.toFixed(2)}</td>
+      <td><span class="tag ${s.fuente==='INDEC'?'oficial':'estimado'}">${s.fuente}</span></td>
+    </tr>`;
+  });
+  tbl.innerHTML = html;
+}
+
+/* ============================================================
+   RENDER: 02 CORTES (timeline)
+   ============================================================ */
+function renderCortes(series, engineResult){
+  const {cuts, exposicion} = engineResult;
+  const tl = document.getElementById('timeline');
+  const nodes = [{periodo:series[0].periodo, tipo:'base'}];
+  cuts.forEach(c=> nodes.push({periodo:c.periodo, tipo:'corte', meses:c.mesesDesdeBase, variacion:c.variacionAcumulada}));
+  nodes.push({periodo:series[series.length-1].periodo, tipo:'now', meses:exposicion.mesesTranscurridos, variacion:exposicion.variacionAcumulada});
+
+  const w = Math.max(640, nodes.length*160);
+  tl.style.width = w+'px';
+  const step = (w-80)/(nodes.length-1||1);
+
+  let html = `<div class="timeline-track" style="left:40px; right:40px;"></div>`;
+  nodes.forEach((n,i)=>{
+    const left = 40 + i*step;
+    html += `<div class="tl-node" style="left:${left}px;">
+      <div class="tl-dot ${n.tipo}"></div>
+    </div>`;
+    html += `<div class="tl-label" style="left:${left}px;">
+      <div class="p">${fmtPeriodo(n.periodo)}</div>
+      ${n.tipo!=='base' ? `<div class="v ${n.tipo==='corte'?'red':'amber'}">${fmtPct(n.variacion)}</div>` : `<div class="v" style="color:var(--text-dim)">mes base</div>`}
+    </div>`;
+    if(i>0){
+      const prevLeft = 40 + (i-1)*step;
+      const mid = (left+prevLeft)/2;
+      html += `<div class="tl-span" style="left:${mid}px; transform:translateX(-50%);">${n.meses} mes${n.meses===1?'':'es'}</div>`;
+    }
+  });
+  tl.innerHTML = html;
+
+  const tbl = document.getElementById('tabla-cortes');
+  if(cuts.length===0){
+    tbl.innerHTML = `<tr><td style="padding:12px 0; color:var(--text-dim);">Todavía no se registraron cortes en la serie cargada.</td></tr>`;
+    return;
+  }
+  let h = `<tr><th>Corte</th><th>Período</th><th>Desde</th><th>Meses</th><th>Var. acumulada</th></tr>`;
+  cuts.forEach((c,i)=>{
+    h += `<tr>
+      <td><span class="tag corte">CORTE ${String(i+1).padStart(2,'0')}</span></td>
+      <td>${fmtPeriodo(c.periodo)}</td>
+      <td>${fmtPeriodo(c.basePeriodo)}</td>
+      <td>${c.mesesDesdeBase}</td>
+      <td>${fmtPct(c.variacionAcumulada)}</td>
+    </tr>`;
+  });
+  tbl.innerHTML = h;
+}
+
+/* ============================================================
+   RENDER: 03 EXPOSICION
+   ============================================================ */
+function renderExposicion(series, engineResult, thresholdPct){
+  const {exposicion, cuts} = engineResult;
+  const kpis = document.getElementById('exposicion-kpis');
+  kpis.innerHTML = `
+    <div class="panel"><h3>Último corte / base</h3><div class="kpi amber">${fmtPeriodo(exposicion.basePeriodo)}</div><small>${cuts.length} corte(s) registrados en la serie</small></div>
+    <div class="panel"><h3>Meses sin adecuación</h3><div class="kpi cyan">${exposicion.mesesTranscurridos}</div><small>desde ${fmtPeriodo(exposicion.basePeriodo)} hasta ${fmtPeriodo(exposicion.periodoActual)}</small></div>
+    <div class="panel"><h3>Variación acumulada</h3><div class="kpi ${exposicion.variacionAcumulada>=thresholdPct*0.8?'red':'amber'}">${fmtPct(exposicion.variacionAcumulada)}</div><small>umbral: ${thresholdPct}%</small></div>
+    <div class="panel"><h3>Distancia al corte</h3><div class="kpi ${exposicion.distanciaAlUmbral<=1?'red':'cyan'}">${exposicion.distanciaAlUmbral.toFixed(2)} p.p.</div><small>para alcanzar el umbral</small></div>
+  `;
+  const pct = Math.min(100, (exposicion.variacionAcumulada/thresholdPct)*100);
+  const fill = document.getElementById('gauge-fill');
+  fill.style.width = pct+'%';
+  fill.className = 'gauge-fill' + (pct>=80?' danger':'');
+  document.getElementById('gauge-value').textContent = pct.toFixed(0)+'%';
+  document.getElementById('exposicion-texto').innerHTML =
+    `La obra acumula <b style="color:var(--text)">${fmtPct(exposicion.variacionAcumulada)}</b> de variación desde el último punto de referencia (${fmtPeriodo(exposicion.basePeriodo)}), `+
+    `a <b style="color:var(--text)">${exposicion.distanciaAlUmbral.toFixed(2)} puntos porcentuales</b> del umbral de ${thresholdPct}%. `+
+    (exposicion.distanciaAlUmbral<=1 ? 'Está cerca de generar un nuevo corte de adecuación.' : 'Todavía tiene margen antes del próximo corte.');
+}
+
+/* ============================================================
+   RENDER: 04 SIMULADOR
+   ============================================================ */
+function populateSimuladorSelects(series){
+  const mb = document.getElementById('sim-mesbase');
+  const ma = document.getElementById('sim-mesanalisis');
+  [mb, ma].forEach(sel=> sel.innerHTML = series.map(s=>`<option value="${s.periodo}">${fmtPeriodo(s.periodo)}</option>`).join(''));
+  mb.value = series[0].periodo;
+  ma.value = series[series.length-1].periodo;
+}
+
+function runSimulador(series){
+  const monto = parseFloat(document.getElementById('sim-monto').value)||0;
+  const mesBase = document.getElementById('sim-mesbase').value;
+  const mesAnalisis = document.getElementById('sim-mesanalisis').value;
+  const umbral = parseFloat(document.getElementById('sim-umbral').value)||5;
+
+  const iBase = series.findIndex(s=>s.periodo===mesBase);
+  const iEnd = series.findIndex(s=>s.periodo===mesAnalisis);
+  if(iBase<0 || iEnd<0 || iEnd<=iBase){
+    alert('El mes de análisis debe ser posterior al mes base.');
+    return;
+  }
+  const sub = series.slice(iBase, iEnd+1);
+  const {cuts, exposicion} = runCutEngine(sub, umbral);
+
+  // contract value adjusted at each cut
+  let montoAjustado = monto;
+  cuts.forEach(c=>{ montoAjustado = montoAjustado * (1 + c.variacionAcumulada/100); });
+  const impacto = montoAjustado * (exposicion.variacionAcumulada/100);
+
+  const variacionTotal = (sub[sub.length-1].idx_general/sub[0].idx_general - 1)*100;
+
+  document.getElementById('sim-kpis').innerHTML = `
+    <div class="panel"><h3>Variación acumulada total</h3><div class="kpi amber">${fmtPct(variacionTotal)}</div><small>${fmtPeriodo(mesBase)} → ${fmtPeriodo(mesAnalisis)}</small></div>
+    <div class="panel"><h3>Cortes detectados</h3><div class="kpi cyan">${cuts.length}</div><small>con umbral ${umbral}%</small></div>
+    <div class="panel"><h3>Meses de exposición actual</h3><div class="kpi cyan">${exposicion.mesesTranscurridos}</div><small>desde ${fmtPeriodo(exposicion.basePeriodo)}</small></div>
+    <div class="panel"><h3>Monto contractual ajustado</h3><div class="kpi amber">${fmtMoney(montoAjustado)}</div><small>tras ${cuts.length} corte(s)</small></div>
+  `;
+  document.getElementById('sim-impacto').textContent = fmtMoney(impacto);
+
+  const tbl = document.getElementById('sim-tabla-cortes');
+  if(cuts.length===0){
+    tbl.innerHTML = `<tr><td style="padding:10px 0; color:var(--text-dim);">No se detectaron cortes en este rango con el umbral indicado.</td></tr>`;
+  }else{
+    let h = `<tr><th>Corte</th><th>Período</th><th>Var. acumulada</th><th>Monto tras el corte</th></tr>`;
+    let m = monto;
+    cuts.forEach((c,i)=>{
+      m = m*(1+c.variacionAcumulada/100);
+      h += `<tr><td><span class="tag corte">CORTE ${String(i+1).padStart(2,'0')}</span></td><td>${fmtPeriodo(c.periodo)}</td><td>${fmtPct(c.variacionAcumulada)}</td><td>${fmtMoney(m)}</td></tr>`;
+    });
+    tbl.innerHTML = h;
+  }
+  document.getElementById('sim-result').classList.add('show');
+}
+
+/* ============================================================
+   RENDER: 05 EQUILIBRIO
+   ============================================================ */
+function renderEquilibrio(series, engineResult){
+  const {cuts} = engineResult;
+  // build "monto ajustado" step series aligned to same periods, base 100
+  const steps = series.map(s=>({periodo:s.periodo, idx_general:s.idx_general, contrato:100}));
+  let base = 0, baseVal = 100;
+  steps[0].contrato = 100;
+  for(let i=1;i<steps.length;i++){
+    steps[i].contrato = baseVal;
+    const cut = cuts.find(c=>c.periodo===steps[i].periodo);
+    if(cut){ baseVal = baseVal * (1+cut.variacionAcumulada/100); steps[i].contrato = baseVal; }
+  }
+  const lines = [
+    {key:'idx_general', color:'var(--amber)', label:'Costo real (ICC nivel general)'},
+    {key:'contrato', color:'var(--cyan)', label:'Monto contractual (ajusta solo en cortes)'},
+  ];
+  lineChart(document.getElementById('chart-equilibrio'), steps, lines, {cutPeriods:cuts.map(c=>c.periodo)});
+  legendFor(document.getElementById('legend-equilibrio'), lines);
+}
+
+/* ============================================================
+   INIT + TABS
+   ============================================================ */
+function init(){
+  const series = buildSeries(RAW);
+  const thresholdPct = 5;
+  const engineResult = runCutEngine(series, thresholdPct);
+
+  document.getElementById('last-update').textContent =
+    'fuente: ' + RAW.meta.fuente.split(' - ')[0] + ' · última carga: ' + fmtPeriodo(series[series.length-1].periodo);
+
+  renderMonitor(series);
+  renderCortes(series, engineResult);
+  renderExposicion(series, engineResult, thresholdPct);
+  populateSimuladorSelects(series);
+  renderEquilibrio(series, engineResult);
+
+  document.getElementById('sim-run').addEventListener('click', ()=> runSimulador(series));
+
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('screen-'+tab.dataset.screen).classList.add('active');
+    });
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>

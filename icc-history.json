@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "fuente": "INDEC - Índice del Costo de la Construcción en el Gran Buenos Aires (ICC)",
+    "base_index": "2025-12",
+    "nota": "Los valores 'nivel_general' etc. son variaciones % mensuales publicadas por INDEC. El período 2026-05 está marcado como 'estimado' porque no se pudo confirmar el dato oficial al momento de construir este set semilla — reemplazar con el valor real (scripts/update-data.js lo hace automáticamente contra la API de series de tiempo).",
+    "ultima_actualizacion": "2026-08-25"
+  },
+  "periodos": [
+    { "periodo": "2025-12", "var_nivel_general": 1.4, "var_materiales": 1.6, "var_mano_obra": 1.3, "var_gastos_generales": 1.3, "fuente": "INDEC" },
+    { "periodo": "2026-01", "var_nivel_general": 2.3, "var_materiales": 1.4, "var_mano_obra": 3.1, "var_gastos_generales": 2.2, "fuente": "INDEC" },
+    { "periodo": "2026-02", "var_nivel_general": 1.9, "var_materiales": 1.5, "var_mano_obra": 1.6, "var_gastos_generales": 4.4, "fuente": "INDEC" },
+    { "periodo": "2026-03", "var_nivel_general": 2.5, "var_materiales": 1.8, "var_mano_obra": 3.4, "var_gastos_generales": 1.8, "fuente": "INDEC" },
+    { "periodo": "2026-04", "var_nivel_general": 3.1, "var_materiales": 2.9, "var_mano_obra": 3.1, "var_gastos_generales": 3.3, "fuente": "INDEC" },
+    { "periodo": "2026-05", "var_nivel_general": 2.4, "var_materiales": 2.0, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "fuente": "estimado" },
+    { "periodo": "2026-06", "var_nivel_general": 2.6, "var_materiales": 1.8, "var_mano_obra": 3.3, "var_gastos_generales": 2.8, "fuente": "INDEC" },
+    { "periodo": "2026-07", "var_nivel_general": 2.1, "var_materiales": 1.6, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "fuente": "INDEC" }
+  ]
+}
