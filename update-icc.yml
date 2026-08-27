@@ -1,31 +1,36 @@
-name: Actualizar datos ICC
+name: Chequeo mensual de fuente ICC (red de seguridad)
 
 on:
   schedule:
-    # Corre el día 20 de cada mes a las 14:00 UTC (11:00 ARG)
-    # INDEC suele publicar el ICC entre el 15 y el 20 de cada mes.
-    - cron: '0 14 20 * *'
-  workflow_dispatch: {}   # permite correrlo manualmente desde la pestaña Actions
+    - cron: '0 14 20 * *'   # día 20 de cada mes, 14:00 UTC
+  workflow_dispatch: {}
 
 jobs:
-  update:
+  check:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Actualizar data/icc-history.json
-        run: node scripts/update-data.js
+      - name: Descargar fuente y guardar para revisión
+        env:
+          INDEC_ICC_CSV_URL: ${{ secrets.INDEC_ICC_CSV_URL }}
+        run: node scripts/update-fallback.js
 
-      - name: Commit y push si hubo cambios
+      - name: Commit del CSV crudo (si cambió) para revisión manual
         run: |
           git config user.name "icc-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/icc-history.json
-          git diff --staged --quiet || git commit -m "chore: actualización automática ICC $(date +%Y-%m)"
-          git push
+          git add scripts/ultima-descarga-cruda.csv 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "chore: descarga ICC para revisión $(date +%Y-%m)"
+          git push || true
+
+  # Nota: este workflow NO actualiza data/icc-fallback.json automáticamente.
+  # Deja el CSV crudo en scripts/ultima-descarga-cruda.csv para que una
+  # persona lo revise y actualice el fallback a mano si corresponde. Esto
+  # es intencional: preferimos una revisión humana antes de tocar el
+  # dataset de contingencia, en vez de un commit automático sin supervisión.

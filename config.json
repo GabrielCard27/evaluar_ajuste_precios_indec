@@ -1,12 +1,13 @@
 {
-  "_comentario": "IDs de series en la API de Series de Tiempo (apis.datos.gob.ar/series/api/series). Confirmá/actualizá estos IDs desde https://datos.gob.ar/dataset/sspm-indice-costo-construccion-icc antes de activar la automatización — INDEC no expone un endpoint JSON propio para el ICC, así que este dataset republicado es el camino de automatización recomendado. Si los IDs cambian o no están disponibles, el script cae en modo manual (ver update-data.js).",
-  "series_ids": {
-    "nivel_general": "REEMPLAZAR_CON_ID_REAL",
-    "materiales": "REEMPLAZAR_CON_ID_REAL",
-    "mano_obra": "REEMPLAZAR_CON_ID_REAL",
-    "gastos_generales": "REEMPLAZAR_CON_ID_REAL"
+  "_comentario": "Este config es SOLO para scripts/update-fallback.js — el archivo de contingencia local. La fuente primaria en producción es /api/icc.js (INDEC_ICC_CSV_URL, configurado en Vercel). Este script es una red de seguridad secundaria para que el fallback no quede desactualizado por muchos meses si nadie lo toca.",
+  "series_ids_datos_gob_ar": {
+    "_estado": "NO_CONFIRMADO",
+    "_nota": "No se pudo confirmar en la sesión de construcción de este proyecto el/los id(s) de serie del ICC en apis.datos.gob.ar/series/api/series. Confirmar en https://datos.gob.ar antes de completar esto.",
+    "nivel_general": "",
+    "materiales": "",
+    "mano_obra": "",
+    "gastos_generales": ""
   },
-  "representation_mode": "percent_change",
-  "output_path": "data/icc-history.json",
+  "output_path": "data/icc-fallback.json",
   "threshold_pct": 5
 }
