@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/favicon.png">
 <title>ICC Control Room V2.1 — Monitor de Adecuación Contractual</title>
 <style>
   :root{
@@ -24,6 +25,10 @@
     --green-dim:     #1f4030;
     --orange:        #e08a3d;
     --orange-dim:    #5c3c1f;
+    /* Colores secundarios de series analíticas (Mano de obra, Gastos generales) —
+       antes hardcodeados como hex sueltos en el JS de los gráficos, ahora centralizados */
+    --violet:        #8a7ce8;
+    --blue:          #5fb8e0;
     --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
   }
@@ -38,6 +43,7 @@
     position:sticky; top:0; z-index:20;
   }
   .brand{display:flex; align-items:center; gap:10px;}
+  .brand-logo{height:30px; width:auto; display:block; flex-shrink:0;}
   .brand-dot{width:9px; height:9px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); animation:pulse 2.2s ease-in-out infinite;}
   .brand-dot.contingencia{background:var(--amber); box-shadow:0 0 8px var(--amber);}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
@@ -87,6 +93,7 @@
   .kpi{font-family:var(--mono); font-size:24px; font-weight:700; line-height:1;}
   .kpi small{font-size:11px; color:var(--text-dim); font-weight:400; display:block; margin-top:6px; font-family:var(--sans);}
   .kpi.amber{color:var(--amber);} .kpi.cyan{color:var(--cyan);} .kpi.red{color:var(--red);} .kpi.green{color:var(--green);}
+  .kpi.violet{color:var(--violet);} .kpi.blue{color:var(--blue);}
   /* Sistema de estado unificado (Monitor / Cortes / Exposición / Simulador comparten esta misma paleta) */
   .kpi.verde{color:var(--green);} .kpi.amarillo{color:var(--amber);} .kpi.naranja{color:var(--orange);} .kpi.rojo{color:var(--red);}
   .trend{font-size:11px; font-family:var(--mono); margin-top:4px;}
@@ -184,6 +191,7 @@
 
 <div class="topbar">
   <div class="brand">
+    <img class="brand-logo" src="assets/logo-icon.png" alt="ICC Control Room" onerror="this.style.display='none'">
     <div class="brand-dot" id="brand-dot"></div>
     <div class="brand-text">
       <h1>ICC Control Room <span style="color:var(--text-faint); font-weight:400;">V2.1</span></h1>
@@ -765,14 +773,14 @@ function renderMonitor(series){
   document.getElementById('monitor-kpis').innerHTML =
     tarjeta('Nivel general','idx_general','amber') +
     tarjeta('Materiales','idx_materiales','cyan') +
-    tarjeta('Mano de obra','idx_mano_obra','cyan') +
-    tarjeta('Gastos generales','idx_gastos','cyan');
+    tarjeta('Mano de obra','idx_mano_obra','violet') +
+    tarjeta('Gastos generales','idx_gastos','blue');
 
   const lines = [
     {key:'idx_general', color:'var(--amber)', label:'Nivel general'},
     {key:'idx_materiales', color:'var(--cyan)', label:'Materiales'},
-    {key:'idx_mano_obra', color:'#8a7ce8', label:'Mano de obra'},
-    {key:'idx_gastos', color:'#5fb8e0', label:'Gastos generales'},
+    {key:'idx_mano_obra', color:'var(--violet)', label:'Mano de obra'},
+    {key:'idx_gastos', color:'var(--blue)', label:'Gastos generales'},
   ];
   lineChart(document.getElementById('chart-evolucion'), ultimos12, lines);
   legendFor(document.getElementById('legend-evolucion'), lines);
