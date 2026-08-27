@@ -178,6 +178,14 @@
   .source-grid .k{color:var(--text-dim); font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em;}
   .source-grid .v{margin-top:3px; font-weight:600;}
 
+  .range-selector{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+  .range-chip{
+    font-family:var(--mono); font-size:11px; color:var(--text-dim); background:var(--bg-panel-2);
+    border:1px solid var(--border); padding:5px 12px; border-radius:20px; cursor:pointer; letter-spacing:.02em;
+  }
+  .range-chip:hover{color:var(--text); border-color:var(--text-faint);}
+  .range-chip.active{color:#1a1204; background:var(--amber); border-color:var(--amber); font-weight:700;}
+
   footer{text-align:center; padding:24px 16px; font-size:10.5px; color:var(--text-faint); font-family:var(--mono);}
   a{color:var(--cyan);}
 
@@ -220,12 +228,13 @@
 <section class="screen active" id="screen-monitor">
   <div class="screen-head">
     <div class="eyebrow">Nivel 1 — Dato <span class="level-badge">INDEC</span></div>
-    <h2>Evolución del ICC — últimos 12 meses disponibles</h2>
+    <h2>Evolución del ICC</h2>
     <p id="monitor-rango">Nivel general y sus tres componentes.</p>
   </div>
   <div class="grid" id="monitor-kpis"></div>
   <div class="panel">
-    <h3>Evolución de índices (últimos 12 meses disponibles)</h3>
+    <h3>Evolución de índices</h3>
+    <div class="range-selector" id="range-selector"></div>
     <div id="chart-evolucion"></div>
     <div class="legend" id="legend-evolucion"></div>
   </div>
@@ -381,10 +390,13 @@ const CONFIG = {
   // contrato puede tener su propio umbral, ajustable en el Simulador.
   defaultThresholdPct: 5,
   ultimos12MesesN: 12,
+  // Opciones del selector de rango en el Monitor. 'todo' siempre está disponible;
+  // las opciones numéricas que superen los períodos cargados se ocultan solas.
+  rangeOptions: [6, 12, 24],
   estadoUmbrales: { naranja: 1.0, amarillo: 2.5 } // p.p. de distancia al umbral
 };
 
-const FALLBACK_EMBEDDED = {"meta": {"fuente": "INDEC - \u00cdndice del Costo de la Construcci\u00f3n en el Gran Buenos Aires (ICC)", "modo": "contingencia", "nota_contingencia": "Este archivo es un FALLBACK LOCAL. Se usa \u00fanicamente si /api/icc no puede obtener el dato oficial en el momento de la consulta. Cuando se usa, el dashboard muestra el aviso 'Modo contingencia \u2014 datos locales' junto con el per\u00edodo de estos datos. Nunca se presenta como una consulta en vivo a la fuente.", "unidad": "variaci\u00f3n % mensual publicada por INDEC en el informe de prensa del ICC (no es el n\u00famero \u00edndice base 1993=100; ver README - secci\u00f3n 'C\u00f3mo se obtiene el dato')", "ultima_actualizacion": "2026-08-26"}, "periodos": [{"periodo": "2025-12", "var_nivel_general": 1.4, "var_materiales": 1.6, "var_mano_obra": 1.3, "var_gastos_generales": 1.3, "origen": "oficial_variacion"}, {"periodo": "2026-01", "var_nivel_general": 2.3, "var_materiales": 1.4, "var_mano_obra": 3.1, "var_gastos_generales": 2.2, "origen": "oficial_variacion"}, {"periodo": "2026-02", "var_nivel_general": 1.9, "var_materiales": 1.5, "var_mano_obra": 1.6, "var_gastos_generales": 4.4, "origen": "oficial_variacion"}, {"periodo": "2026-03", "var_nivel_general": 2.5, "var_materiales": 1.8, "var_mano_obra": 3.4, "var_gastos_generales": 1.8, "origen": "oficial_variacion"}, {"periodo": "2026-04", "var_nivel_general": 3.1, "var_materiales": 2.9, "var_mano_obra": 3.1, "var_gastos_generales": 3.3, "origen": "oficial_variacion"}, {"periodo": "2026-05", "var_nivel_general": 2.4, "var_materiales": 2.0, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "origen": "estimado"}, {"periodo": "2026-06", "var_nivel_general": 2.6, "var_materiales": 1.8, "var_mano_obra": 3.3, "var_gastos_generales": 2.8, "origen": "oficial_variacion"}, {"periodo": "2026-07", "var_nivel_general": 2.1, "var_materiales": 1.6, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "origen": "oficial_variacion"}]};
+const FALLBACK_EMBEDDED = {"meta": {"fuente": "INDEC - \u00cdndice del Costo de la Construcci\u00f3n en el Gran Buenos Aires (ICC)", "modo": "contingencia", "nota_contingencia": "Este archivo es un FALLBACK LOCAL. Se usa \u00fanicamente si /api/icc no puede obtener el dato oficial en el momento de la consulta. Cuando se usa, el dashboard muestra el aviso 'Modo contingencia \u2014 datos locales' junto con el per\u00edodo de estos datos. Nunca se presenta como una consulta en vivo a la fuente.", "unidad": "variaci\u00f3n % mensual publicada por INDEC en el informe de prensa del ICC. IMPORTANTE: esto NO es el n\u00famero \u00edndice absoluto base 1993=100 \u2014 ese valor solo est\u00e1 disponible en el CSV oficial de INDEC (ver README, 'C\u00f3mo se obtiene el dato'), que no pudo extraerse autom\u00e1ticamente por estar detr\u00e1s de un enlace generado con JavaScript. Mientras no se configure INDEC_ICC_CSV_URL, el sistema reconstruye un \u00edndice encadenado a partir de estas variaciones \u2014 quedar\u00e1 marcado 'RECONSTRUIDO' en toda la interfaz, nunca como valor oficial absoluto.", "ultima_actualizacion": "2026-08-27"}, "periodos": [{"periodo": "2025-07", "var_nivel_general": 1.6, "var_materiales": 1.5, "var_mano_obra": 1.7, "var_gastos_generales": 1.7, "origen": "oficial_variacion"}, {"periodo": "2025-08", "var_nivel_general": 1.5, "var_materiales": 1.9, "var_mano_obra": 1.1, "var_gastos_generales": 1.3, "origen": "oficial_variacion"}, {"periodo": "2025-09", "var_nivel_general": 3.2, "var_materiales": 2.9, "var_mano_obra": 3.7, "var_gastos_generales": 3.0, "origen": "oficial_variacion"}, {"periodo": "2025-10", "var_nivel_general": 1.6, "var_materiales": 2.1, "var_mano_obra": 1.3, "var_gastos_generales": 1.6, "origen": "oficial_variacion"}, {"periodo": "2025-11", "var_nivel_general": 2.5, "var_materiales": 1.4, "var_mano_obra": 3.6, "var_gastos_generales": 1.8, "origen": "oficial_variacion"}, {"periodo": "2025-12", "var_nivel_general": 1.4, "var_materiales": 1.6, "var_mano_obra": 1.3, "var_gastos_generales": 1.3, "origen": "oficial_variacion"}, {"periodo": "2026-01", "var_nivel_general": 2.3, "var_materiales": 1.4, "var_mano_obra": 3.1, "var_gastos_generales": 2.2, "origen": "oficial_variacion"}, {"periodo": "2026-02", "var_nivel_general": 1.9, "var_materiales": 1.5, "var_mano_obra": 1.6, "var_gastos_generales": 4.4, "origen": "oficial_variacion"}, {"periodo": "2026-03", "var_nivel_general": 2.5, "var_materiales": 1.8, "var_mano_obra": 3.4, "var_gastos_generales": 1.8, "origen": "oficial_variacion"}, {"periodo": "2026-04", "var_nivel_general": 3.1, "var_materiales": 2.9, "var_mano_obra": 3.1, "var_gastos_generales": 3.3, "origen": "oficial_variacion"}, {"periodo": "2026-05", "var_nivel_general": 2.4, "var_materiales": 2.0, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "origen": "estimado"}, {"periodo": "2026-06", "var_nivel_general": 2.6, "var_materiales": 1.8, "var_mano_obra": 3.3, "var_gastos_generales": 2.8, "origen": "oficial_variacion"}, {"periodo": "2026-07", "var_nivel_general": 2.1, "var_materiales": 1.6, "var_mano_obra": 2.5, "var_gastos_generales": 2.5, "origen": "oficial_variacion"}]};
 
 let STATE = { series: [], engine: null, meta: {} };
 
@@ -569,6 +581,12 @@ function getUltimos12Meses(series){
   return series.slice(Math.max(0, series.length-12));
 }
 
+// Generaliza el recorte: n=null/'todo' devuelve la serie completa disponible.
+function getRango(series, n){
+  if(!n || n==='todo' || n>=series.length) return series;
+  return series.slice(Math.max(0, series.length-n));
+}
+
 /* ======================================================================
    6. MOTOR DE CORTES (multiplicativo, nunca suma de %)
    ====================================================================== */
@@ -740,14 +758,34 @@ function legendFor(container, lines){
 /* ======================================================================
    10. INTERFAZ — render por pantalla
    ====================================================================== */
-function renderMonitor(series){
-  const ultimos12 = getUltimos12Meses(series);
+function renderRangeSelector(series, currentRange, onChange){
+  const total = series.length;
+  const opciones = [...CONFIG.rangeOptions.filter(n=>n < total), 'todo'];
+  const el = document.getElementById('range-selector');
+  el.innerHTML = opciones.map(op=>{
+    const label = op==='todo' ? `Todo (${total})` : `${op}m`;
+    const active = (op==='todo' && currentRange==='todo') || op===currentRange;
+    return `<div class="range-chip ${active?'active':''}" data-range="${op}">${label}</div>`;
+  }).join('');
+  el.querySelectorAll('.range-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const val = chip.dataset.range === 'todo' ? 'todo' : parseInt(chip.dataset.range, 10);
+      onChange(val);
+    });
+  });
+}
+
+function renderMonitor(series, rangeMonths){
+  const rango = getRango(series, rangeMonths);
   const last = series[series.length-1];
-  const disponibles = ultimos12.length;
+  const disponiblesTotal = series.length;
+  const enRango = rango.length;
+  const esRangoCompleto = enRango >= disponiblesTotal;
   document.getElementById('monitor-rango').textContent =
-    `Nivel general y sus tres componentes · ${disponibles} período${disponibles===1?'':'s'} disponible${disponibles===1?'':'s'} `+
-    `(${fmtPeriodo(ultimos12[0].periodo)} → ${fmtPeriodo(last.periodo)})` +
-    (disponibles<12 ? ' — todavía no hay 12 meses cargados' : '');
+    `Nivel general y sus tres componentes · mostrando ${enRango} período${enRango===1?'':'s'} `+
+    `(${fmtPeriodo(rango[0].periodo)} → ${fmtPeriodo(last.periodo)})` +
+    ` · ${disponiblesTotal} período${disponiblesTotal===1?'':'s'} disponible${disponiblesTotal===1?'':'s'} en total` +
+    (esRangoCompleto ? '' : `, se puede ampliar`);
 
   const varMensual = calcularVariacionMensual(series, series.length-1);
   const var12 = calcularVariacion12Meses(series, series.length-1);
@@ -782,7 +820,7 @@ function renderMonitor(series){
     {key:'idx_mano_obra', color:'var(--violet)', label:'Mano de obra'},
     {key:'idx_gastos', color:'var(--blue)', label:'Gastos generales'},
   ];
-  lineChart(document.getElementById('chart-evolucion'), ultimos12, lines);
+  lineChart(document.getElementById('chart-evolucion'), rango, lines);
   legendFor(document.getElementById('legend-evolucion'), lines);
 
   let html = `<tr><th>Período</th><th>Var. mensual</th><th>Nivel general</th><th>Materiales</th><th>Mano de obra</th><th>Gastos grales.</th><th>Origen</th></tr>`;
@@ -997,7 +1035,17 @@ async function init(){
 
   const thresholdPct = CONFIG.defaultThresholdPct;
 
-  renderMonitor(series);
+  // Rango visible en el gráfico del Monitor: últimos 12 meses por defecto,
+  // ampliable con el selector de chips (persistido en STATE para no perderlo
+  // si se re-renderiza la pantalla).
+  STATE.rangoMonitor = series.length >= 12 ? 12 : 'todo';
+  const rerenderMonitor = (nuevoRango)=>{
+    STATE.rangoMonitor = nuevoRango;
+    renderRangeSelector(series, STATE.rangoMonitor, rerenderMonitor);
+    renderMonitor(series, STATE.rangoMonitor);
+  };
+  renderRangeSelector(series, STATE.rangoMonitor, rerenderMonitor);
+  renderMonitor(series, STATE.rangoMonitor);
   renderFuenteInfo(STATE.meta, modo, series);
   renderCortes(series, thresholdPct);
   renderExposicion(series, thresholdPct);
