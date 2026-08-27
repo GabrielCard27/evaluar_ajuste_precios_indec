@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ICC Control Room — Monitor de Adecuación Contractual</title>
+<title>ICC Control Room V2.1 — Monitor de Adecuación Contractual</title>
 <style>
   :root{
     --bg:            #0a0e13;
@@ -87,6 +87,8 @@
   .kpi{font-family:var(--mono); font-size:24px; font-weight:700; line-height:1;}
   .kpi small{font-size:11px; color:var(--text-dim); font-weight:400; display:block; margin-top:6px; font-family:var(--sans);}
   .kpi.amber{color:var(--amber);} .kpi.cyan{color:var(--cyan);} .kpi.red{color:var(--red);} .kpi.green{color:var(--green);}
+  /* Sistema de estado unificado (Monitor / Cortes / Exposición / Simulador comparten esta misma paleta) */
+  .kpi.verde{color:var(--green);} .kpi.amarillo{color:var(--amber);} .kpi.naranja{color:var(--orange);} .kpi.rojo{color:var(--red);}
   .trend{font-size:11px; font-family:var(--mono); margin-top:4px;}
   .trend.up{color:var(--red);} .trend.down{color:var(--green);}
 
@@ -97,8 +99,11 @@
   tr:hover td{background:rgba(255,255,255,.02);}
   .tag{display:inline-block; font-size:9.5px; font-family:var(--mono); padding:1px 6px; border-radius:8px; letter-spacing:.03em;}
   .tag.oficial{background:var(--cyan-dim); color:var(--cyan);}
+  .tag.reconstruido{background:var(--orange-dim); color:var(--orange);}
   .tag.estimado{background:var(--amber-dim); color:var(--amber);}
+  .tag.contingencia{background:var(--amber-dim); color:var(--amber);}
   .tag.corte{background:var(--red-dim); color:var(--red);}
+  .level-badge{font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-faint); border:1px solid var(--border); border-radius:10px; padding:1px 7px; margin-left:6px;}
   .badge{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px; padding:3px 9px; border-radius:20px;}
   .badge.verde{background:var(--green-dim); color:var(--green);}
   .badge.amarillo{background:var(--amber-dim); color:var(--amber);}
@@ -181,7 +186,7 @@
   <div class="brand">
     <div class="brand-dot" id="brand-dot"></div>
     <div class="brand-text">
-      <h1>ICC Control Room</h1>
+      <h1>ICC Control Room <span style="color:var(--text-faint); font-weight:400;">V2.1</span></h1>
       <p id="last-update">cargando datos…</p>
     </div>
   </div>
@@ -191,20 +196,23 @@
 <div class="contingency-banner" id="contingency-banner">
   ⚠ Modo contingencia — datos locales · <span id="contingency-periodo"></span>
 </div>
+<div class="contingency-banner" id="quality-banner" style="border-bottom-color:var(--red-dim); background:linear-gradient(90deg, rgba(226,87,76,.12), transparent); color:var(--red);">
+  ⚠ Se detectaron problemas de calidad en los datos recibidos · <span id="quality-detalle"></span>
+</div>
 
 <div class="tabs" id="tabs">
   <div class="tab active" data-screen="monitor"><span class="n">01</span> Monitor ICC</div>
   <div class="tab" data-screen="cortes"><span class="n">02</span> Cortes de Adecuación</div>
   <div class="tab" data-screen="exposicion"><span class="n">03</span> Exposición</div>
   <div class="tab" data-screen="simulador"><span class="n">04</span> Simulador</div>
-  <div class="tab" data-screen="brecha"><span class="n">05</span> Brecha de Actualización</div>
+  <div class="tab" data-screen="brecha"><span class="n">05</span> Brecha Teórica</div>
 </div>
 
 <!-- 01 MONITOR -->
 <section class="screen active" id="screen-monitor">
   <div class="screen-head">
-    <div class="eyebrow">Datos → Información</div>
-    <h2>Evolución del ICC — últimos 12 meses</h2>
+    <div class="eyebrow">Nivel 1 — Dato <span class="level-badge">INDEC</span></div>
+    <h2>Evolución del ICC — últimos 12 meses disponibles</h2>
     <p id="monitor-rango">Nivel general y sus tres componentes.</p>
   </div>
   <div class="grid" id="monitor-kpis"></div>
@@ -229,19 +237,14 @@
 <!-- 02 CORTES -->
 <section class="screen" id="screen-cortes">
   <div class="screen-head">
-    <div class="eyebrow">Motor de Cortes</div>
+    <div class="eyebrow">Nivel 2 — Cálculo <span class="level-badge">Motor de Cortes</span></div>
     <h2>Secuencia de cortes de adecuación</h2>
-    <p>Cada vez que la variación acumulada desde el último punto de referencia alcanza el umbral (5% por defecto), el sistema registra un corte y reinicia la acumulación desde índices oficiales — no se suman porcentajes mensuales.</p>
+    <p id="cortes-intro">Cada vez que la variación acumulada desde el último punto de referencia alcanza el umbral configurado, el sistema registra un corte y reinicia la acumulación a partir de índices — nunca sumando porcentajes mensuales.</p>
   </div>
   <div class="panel">
     <h3>Recorrido: mes base → cortes → situación actual</h3>
     <div class="timeline-wrap"><div class="timeline" id="timeline"></div></div>
-    <div class="legend" style="margin-top:6px;">
-      <span><span class="badge verde"><i></i></span> sin proximidad</span>
-      <span><span class="badge amarillo"><i></i></span> variación elevada</span>
-      <span><span class="badge naranja"><i></i></span> cercano al 5%</span>
-      <span><span class="badge rojo"><i></i></span> alcanzó/superó 5%</span>
-    </div>
+    <div class="legend" id="legend-estados" style="margin-top:6px;"></div>
   </div>
   <div class="panel" style="margin-top:12px;">
     <h3>Detalle de cortes registrados</h3>
@@ -252,7 +255,7 @@
 <!-- 03 EXPOSICION -->
 <section class="screen" id="screen-exposicion">
   <div class="screen-head">
-    <div class="eyebrow">Información → Conocimiento</div>
+    <div class="eyebrow">Nivel 2 — Cálculo <span class="level-badge">Indicador de gestión</span></div>
     <h2>Exposición actual</h2>
     <p>Distancia entre la situación actual y el próximo corte de adecuación, y estadísticas del recorrido completo de cortes.</p>
   </div>
@@ -264,6 +267,7 @@
       <div class="kpi amber" id="gauge-value" style="font-size:18px;">0%</div>
     </div>
     <p style="font-size:11.5px; color:var(--text-dim); margin-top:10px;" id="exposicion-texto"></p>
+    <div class="note">«La exposición es un indicador de análisis de gestión y no representa por sí misma un importe contractual reconocido.»</div>
   </div>
   <div class="grid" style="margin-top:12px;" id="exposicion-stats"></div>
 </section>
@@ -271,9 +275,9 @@
 <!-- 04 SIMULADOR -->
 <section class="screen" id="screen-simulador">
   <div class="screen-head">
-    <div class="eyebrow">Conocimiento → Decisión</div>
+    <div class="eyebrow">Nivel 3 — Simulación <span class="level-badge">Hipotético</span></div>
     <h2>Simulador de adecuación</h2>
-    <p>Ingresá un contrato y un rango de meses para estimar cortes, exposición y una exposición económica estimada.</p>
+    <p>Ingresá un contrato y un rango de meses para estimar cortes, exposición y un impacto teórico de actualización pendiente.</p>
   </div>
   <div class="panel">
     <div class="form-grid">
@@ -290,18 +294,19 @@
         <select id="sim-mesanalisis"></select>
       </div>
       <div>
-        <label>Umbral de adecuación (%)</label>
+        <label>Umbral de simulación (%)</label>
         <input type="number" id="sim-umbral" value="5" step="0.1">
       </div>
     </div>
+    <p style="font-size:11px; color:var(--text-faint); margin-top:-6px; margin-bottom:14px;">Parámetro contractual configurable — el 5% es un valor de referencia habitual, no una regla universal aplicable a todo contrato.</p>
     <button class="run" id="sim-run">Calcular</button>
 
     <div class="result-block" id="sim-result">
       <div class="grid" style="margin-top:16px;" id="sim-kpis"></div>
       <div class="impact-banner">
-        <div class="label">Exposición económica estimada</div>
+        <div class="label">Impacto teórico de actualización pendiente</div>
         <div class="amt" id="sim-impacto">$0</div>
-        <p>Estimación teórica basada en el monto ingresado y la variación ICC seleccionada. No representa por sí misma un descalce económico-financiero contractual — ver pestaña 05 para esa distinción.</p>
+        <p>Estimación teórica — no es una pérdida, deuda ni descalce económico-financiero real, sino el resultado de aplicar la variación ICC seleccionada sobre el monto ingresado. No incorpora avance físico, certificación ni saldo contractual pendiente (ver pestaña 05). El cálculo es: monto ya ajustado por cortes anteriores × variación acumulada desde el último corte.</p>
       </div>
       <div style="overflow-x:auto; margin-top:14px;"><table id="sim-tabla-cortes"></table></div>
     </div>
@@ -311,42 +316,50 @@
 <!-- 05 BRECHA -->
 <section class="screen" id="screen-brecha">
   <div class="screen-head">
-    <div class="eyebrow">Decisión</div>
-    <h2>Brecha de actualización</h2>
-    <p>Comparación entre evolución de costos y actualización contractual simulada.</p>
+    <div class="eyebrow">Nivel 3 — Simulación <span class="level-badge">Comparación conceptual</span></div>
+    <h2>Brecha teórica de actualización</h2>
+    <p>Comparación conceptual entre la evolución acumulada del ICC y una actualización contractual simulada mediante cortes — no es una medición de costos reales de obra.</p>
   </div>
   <div class="panel">
-    <h3>ICC nivel general vs. contrato ajustado por cortes</h3>
+    <h3>ICC nivel general — evolución acumulada vs. actualización contractual simulada</h3>
     <div id="chart-equilibrio"></div>
     <div class="legend" id="legend-equilibrio"></div>
     <div class="note warn">
-      <strong>Esta visualización representa una brecha de actualización teórica.</strong> Para determinar un descalce económico-financiero real deben incorporarse avance físico, certificación, montos efectivamente ejecutados, adecuaciones ya reconocidas y saldo contractual pendiente de ejecutar (ver "Preparado para v3" más abajo).
+      <strong>Esta visualización representa una brecha teórica de actualización, no un descalce económico-financiero real.</strong>
+      El ICC nivel general es un índice de precios de la construcción en general — no representa necesariamente el costo real específico de una obra particular. Para determinar un descalce económico-financiero real deben incorporarse avance físico, certificación, montos efectivamente ejecutados, adecuaciones ya reconocidas y saldo contractual pendiente de ejecutar (ver "Camino hacia la V3" más abajo).
     </div>
   </div>
   <div class="panel" style="margin-top:12px;">
-    <h3>Preparado para v3</h3>
+    <h3>Camino hacia la V3</h3>
     <p style="font-size:12px; color:var(--text-dim); line-height:1.7;">
-      La arquitectura actual deja lugar para incorporar, sin rehacer el sistema: avance físico, certificación,
-      monto ejecutado, monto pendiente, adecuaciones reconocidas, costos reales incurridos, flujo financiero y
-      saldo contractual. Con esos datos, la "brecha de actualización" de hoy podrá evolucionar hacia un indicador
-      real de descalce económico-financiero.
+      La arquitectura actual deja lugar para incorporar, sin rehacer el sistema: avance físico, avance previsto,
+      certificación, monto ejecutado, saldo contractual, monto pendiente de ejecutar, adecuaciones solicitadas,
+      adecuaciones reconocidas, costos reales, flujo financiero, fechas contractuales y ampliaciones de plazo.
+      Con esos datos, el proyecto podrá evolucionar desde un monitor de ICC hacia un
+      <strong style="color:var(--text)">Control Room de equilibrio económico-financiero de obra</strong>. Esta versión
+      (V2.1) todavía no implementa esos módulos — solo deja la arquitectura preparada para incorporarlos.
     </p>
   </div>
   <div class="panel methodology" style="margin-top:12px;">
     <h3>Metodología</h3>
     <ol>
-      <li><strong>Datos oficiales ICC</strong> — INDEC, Gran Buenos Aires, base 1993=100.</li>
+      <li><strong>Datos oficiales ICC</strong> — INDEC, Gran Buenos Aires.</li>
+      <li><strong>Base oficial del índice</strong>: 1993 = 100.</li>
+      <li><strong>Uso prioritario del índice oficial</strong> cuando está disponible — nunca se lo reemplaza por una serie reconstruida.</li>
       <li><strong>Variaciones calculadas a partir de índices</strong>, nunca sumando porcentajes mensuales.</li>
-      <li><strong>Umbral configurable</strong> — 5% por defecto, ajustable en el simulador.</li>
-      <li><strong>Corte automático</strong> al alcanzar o superar el umbral.</li>
+      <li><strong>No se suman porcentajes mensuales</strong> en ningún cálculo del sistema.</li>
+      <li><strong>Umbral configurable</strong> — parámetro de simulación, 5% de referencia por defecto.</li>
+      <li><strong>Corte automático</strong> al alcanzar o superar el umbral configurado.</li>
       <li><strong>Reinicio de acumulación</strong> desde cada corte registrado.</li>
-      <li><strong>Exposición</strong> calculada como indicador de análisis de gestión, no como valor contractual reconocido.</li>
-      <li><strong>Brecha de actualización</strong>, diferenciada expresamente del descalce contractual real.</li>
+      <li><strong>Exposición</strong> como indicador de gestión, no como importe contractual reconocido.</li>
+      <li><strong>Brecha teórica de actualización</strong>, diferenciada expresamente del descalce económico-financiero real.</li>
+      <li><strong>Simulación vs. descalce real</strong>: todo resultado del Simulador y de la Brecha es hipotético hasta incorporar avance, certificación y costos reales (V3).</li>
+      <li><strong>Datos reconstruidos</strong> claramente identificados como tales cuando se usan en modo contingencia.</li>
     </ol>
   </div>
 </section>
 
-<footer>ICC Control Room V2 · fuente: INDEC (Índice del Costo de la Construcción, Gran Buenos Aires) · arquitectura: fuente oficial → validación → normalización → motor de cortes → dashboard</footer>
+<footer>ICC Control Room V2.1 · fuente: INDEC (Índice del Costo de la Construcción, Gran Buenos Aires) · arquitectura: dato oficial → validación → normalización → cálculo → indicador → simulación → decisión</footer>
 
 <script>
 /* ======================================================================
@@ -355,6 +368,9 @@
 const CONFIG = {
   apiEndpoint: 'api/icc',
   fallbackPath: 'data/icc-fallback.json',
+  // Umbral de simulación / parámetro contractual configurable. 5% es un valor
+  // de referencia habitual en la práctica, NO una regla universal: cada
+  // contrato puede tener su propio umbral, ajustable en el Simulador.
   defaultThresholdPct: 5,
   ultimos12MesesN: 12,
   estadoUmbrales: { naranja: 1.0, amarillo: 2.5 } // p.p. de distancia al umbral
@@ -396,72 +412,130 @@ async function getICCData(){
 
 /* ======================================================================
    3. VALIDACIÓN
+   Distingue problemas RECUPERABLES (se corrigen solos en normalizeICCData,
+   ej. orden cronológico) de problemas CRÍTICOS (se muestran como advertencia
+   visible al usuario vía el banner de calidad, nunca se ocultan).
    ====================================================================== */
 function validateICCData(raw){
-  const errores = [];
+  const criticos = [];
+  const recuperables = [];
   const periodos = raw.periodos || [];
-  if(periodos.length === 0) errores.push('La serie recibida está vacía.');
+
+  if(periodos.length === 0){
+    criticos.push('La serie recibida está vacía.');
+    return { ok:false, criticos, recuperables };
+  }
+
+  const esIndiceOficial = periodos.every(p => 'idx_general' in p);
+  const componentesEsperados = esIndiceOficial
+    ? ['idx_general','idx_materiales','idx_mano_obra','idx_gastos']
+    : ['var_nivel_general','var_materiales','var_mano_obra','var_gastos_generales'];
 
   const vistos = new Set();
   periodos.forEach(p=>{
-    if(!p.periodo || !/^\d{4}-\d{2}$/.test(p.periodo)) errores.push(`Período inválido: ${p.periodo}`);
-    if(vistos.has(p.periodo)) errores.push(`Período duplicado: ${p.periodo}`);
+    if(!p.periodo || !/^\d{4}-\d{2}$/.test(p.periodo)){
+      criticos.push(`Período inválido: ${p.periodo}`);
+      return;
+    }
+    if(vistos.has(p.periodo)) criticos.push(`Período duplicado: ${p.periodo}`);
     vistos.add(p.periodo);
+
+    componentesEsperados.forEach(k=>{
+      const v = p[k];
+      if(v === undefined || v === null || Number.isNaN(v)){
+        criticos.push(`Valor faltante o no numérico en ${k} (${p.periodo}).`);
+      } else if(esIndiceOficial && v <= 0){
+        // Un número índice nunca puede ser cero o negativo; una variación % mensual sí puede serlo (deflación).
+        criticos.push(`Valor imposible en ${k} (${p.periodo}): un índice no puede ser ≤ 0.`);
+      }
+    });
   });
 
   const ordenados = [...periodos].map(p=>p.periodo).sort();
   const originales = periodos.map(p=>p.periodo);
   if(JSON.stringify(ordenados) !== JSON.stringify(originales)){
-    errores.push('Los períodos no están ordenados cronológicamente (se reordenan automáticamente).');
+    recuperables.push('Los períodos no estaban ordenados cronológicamente — se reordenaron automáticamente.');
   }
 
-  return { ok: errores.filter(e=>!e.includes('se reordenan')).length === 0, errores };
+  // Coherencia entre períodos consecutivos (advertencia, no bloquea)
+  if(esIndiceOficial){
+    const ordenadosPeriodos = [...periodos].sort((a,b)=>a.periodo.localeCompare(b.periodo));
+    for(let i=1;i<ordenadosPeriodos.length;i++){
+      const prev = ordenadosPeriodos[i-1], cur = ordenadosPeriodos[i];
+      if(prev.idx_general>0 && cur.idx_general>0){
+        const salto = Math.abs(cur.idx_general/prev.idx_general - 1);
+        if(salto > 0.4) recuperables.push(`Salto inusual (${(salto*100).toFixed(1)}%) entre ${prev.periodo} y ${cur.periodo} — se muestra igual, revisar la fuente.`);
+      }
+    }
+  }
+
+  return { ok: criticos.length===0, criticos, recuperables };
 }
 
 /* ======================================================================
    4. NORMALIZACIÓN
-   Unifica dos formatos posibles de entrada en una misma serie interna:
-     a) oficial_indice   -> ya viene como número índice (idx_general, ...)
-     b) oficial_variacion / estimado -> viene como variación % mensual;
-        se reconstruye un índice encadenado, dejando explícito que es
-        un índice RECONSTRUIDO (no el número índice absoluto de INDEC).
+   Unifica dos formatos posibles de entrada en una misma serie interna,
+   pero NUNCA confunde uno con el otro. Cada período queda marcado con
+   tipoIndice:
+     'oficial'      -> viene directamente como número índice de INDEC
+                        (base 1993=100). Se usa TAL CUAL, sin normalizar
+                        a 100 ni reemplazar por una serie artificial.
+     'reconstruido' -> no había índice oficial disponible; se encadenó
+                        a partir de variaciones % mensuales publicadas,
+                        arrancando en una base técnica de cálculo = 100.
+                        Este valor NO es el índice absoluto de INDEC y
+                        la interfaz debe dejarlo explícito en todo momento.
    ====================================================================== */
 function normalizeICCData(raw){
   let periodos = [...raw.periodos].sort((a,b)=> a.periodo.localeCompare(b.periodo));
-  // dedup por si acaso
   const seen = new Set();
   periodos = periodos.filter(p=>{
     if(seen.has(p.periodo)) return false;
     seen.add(p.periodo); return true;
   });
 
-  const tieneIndicesOficiales = periodos.every(p => 'idx_general' in p);
+  const tieneIndicesOficiales = periodos.length>0 && periodos.every(p => 'idx_general' in p && Number.isFinite(p.idx_general));
 
   if(tieneIndicesOficiales){
     return periodos.map(p=>({
       periodo:p.periodo,
       idx_general:p.idx_general, idx_materiales:p.idx_materiales,
       idx_mano_obra:p.idx_mano_obra, idx_gastos:p.idx_gastos,
-      var_general: null, // se calcula luego desde índices
-      origen: p.origen || 'oficial_indice'
+      origen: p.origen || 'oficial_indice',
+      tipoIndice: 'oficial',
+      baseIndice: '1993=100 (INDEC)'
     }));
   }
 
-  // Reconstrucción encadenada desde variaciones mensuales
+  // Reconstrucción encadenada desde variaciones mensuales — base TÉCNICA de
+  // cálculo, no el índice absoluto real. Se documenta así en cada período.
   let idxG=100, idxM=100, idxMO=100, idxGG=100;
   return periodos.map((p,i)=>{
     if(i>0){
-      idxG *= (1+p.var_nivel_general/100);
-      idxM *= (1+p.var_materiales/100);
-      idxMO *= (1+p.var_mano_obra/100);
-      idxGG *= (1+p.var_gastos_generales/100);
+      idxG *= (1 + (Number(p.var_nivel_general)||0)/100);
+      idxM *= (1 + (Number(p.var_materiales)||0)/100);
+      idxMO *= (1 + (Number(p.var_mano_obra)||0)/100);
+      idxGG *= (1 + (Number(p.var_gastos_generales)||0)/100);
     }
     return {
       periodo:p.periodo, origen:p.origen || 'estimado',
       idx_general:idxG, idx_materiales:idxM, idx_mano_obra:idxMO, idx_gastos:idxGG,
-      var_general_publicada: p.var_nivel_general
+      var_general_publicada: p.var_nivel_general,
+      tipoIndice: 'reconstruido',
+      baseIndice: 'base técnica de cálculo = 100 (NO es el índice absoluto oficial de INDEC)'
     };
   });
+}
+
+function origenLabel(p){
+  if(p.tipoIndice==='oficial') return 'OFICIAL';
+  if(p.origen==='estimado') return 'ESTIMADO';
+  return 'RECONSTRUIDO';
+}
+function origenTagClass(p){
+  if(p.tipoIndice==='oficial') return 'oficial';
+  if(p.origen==='estimado') return 'estimado';
+  return 'reconstruido';
 }
 
 /* ======================================================================
@@ -552,21 +626,35 @@ function calculateExposure(series, thresholdPct){
 
 /* ======================================================================
    7. SIMULADOR
+   Nivel 3 — todo lo que devuelve esta función es hipotético/simulado,
+   nunca un valor contractual reconocido ni un descalce real.
+
+   Fórmula del "impacto teórico de actualización pendiente":
+     1) montoAjustado = monto contractual, actualizado en cada corte
+        simulado dentro del rango (mesBase → mesAnalisis).
+     2) impactoTeoricoActualizacion = montoAjustado × (variación acumulada
+        desde el ÚLTIMO corte hasta mesAnalisis, sin incluir esa porción
+        ya en montoAjustado — se aplica una sola vez, no hay doble
+        actualización).
    ====================================================================== */
 function runSimulator(series, {monto, mesBase, mesAnalisis, umbral}){
   const iBase = series.findIndex(s=>s.periodo===mesBase);
   const iEnd = series.findIndex(s=>s.periodo===mesAnalisis);
   if(iBase<0 || iEnd<0 || iEnd<=iBase) return {error:'El mes de análisis debe ser posterior al mes base.'};
+  if(!Number.isFinite(monto) || monto < 0) return {error:'El monto contractual debe ser un número válido mayor o igual a cero.'};
+  if(!Number.isFinite(umbral) || umbral <= 0) return {error:'El umbral de simulación debe ser un número mayor a cero.'};
 
   const sub = series.slice(iBase, iEnd+1);
   const {cuts, exposicion} = calculateExposure(sub, umbral);
 
+  // Cada corte se aplica una única vez sobre el monto acumulado hasta ese punto —
+  // no hay doble aplicación conceptual de la actualización.
   let montoAjustado = monto;
   cuts.forEach(c=>{ montoAjustado *= (1 + c.variacionAcumulada/100); });
-  const exposicionEconomicaEstimada = montoAjustado * (exposicion.variacionAcumulada/100);
+  const impactoTeoricoActualizacion = montoAjustado * (exposicion.variacionAcumulada/100);
   const variacionTotal = calculateVariation(sub, sub.length-1, 0);
 
-  return {cuts, exposicion, montoAjustado, exposicionEconomicaEstimada, variacionTotal, monto};
+  return {cuts, exposicion, montoAjustado, impactoTeoricoActualizacion, variacionTotal, monto};
 }
 
 /* ======================================================================
@@ -580,16 +668,26 @@ function fmtPeriodo(p){
   return meses[parseInt(m,10)-1] + '-' + y.slice(2);
 }
 function estadoLabel(e){
-  return {verde:'sin proximidad', amarillo:'variación elevada', naranja:'cercano al 5%', rojo:'alcanzó/superó 5%'}[e];
+  return {verde:'sin proximidad', amarillo:'variación elevada', naranja:'cercano al umbral', rojo:'alcanzó/superó el umbral'}[e] || '—';
+}
+function estadoLegendItems(){
+  return [
+    {estado:'verde', texto:'sin proximidad'},
+    {estado:'amarillo', texto:'variación elevada'},
+    {estado:'naranja', texto:'cercano al umbral'},
+    {estado:'rojo', texto:'alcanzó/superó el umbral'}
+  ];
 }
 
 /* ======================================================================
    CHARTS (SVG hand-rolled, sin dependencias)
    ====================================================================== */
 function lineChart(container, series, lines, opts={}){
+  if(!series || series.length===0){ container.innerHTML = '<p style="color:var(--text-dim); font-size:12px;">Sin datos suficientes para graficar.</p>'; return; }
   const w = 960, h = 300, pad = {t:16,r:16,b:28,l:44};
   const innerW = w-pad.l-pad.r, innerH = h-pad.t-pad.b;
-  const allVals = lines.flatMap(l=>series.map(s=>s[l.key]));
+  const allVals = lines.flatMap(l=>series.map(s=>s[l.key])).filter(v=>Number.isFinite(v));
+  if(allVals.length===0){ container.innerHTML = '<p style="color:var(--text-dim); font-size:12px;">Sin valores numéricos válidos para graficar.</p>'; return; }
   const min = Math.min(...allVals), max = Math.max(...allVals);
   const yMin = min - (max-min)*0.08, yMax = max + (max-min)*0.08;
   const x = i => pad.l + (i/(series.length-1))*innerW;
@@ -615,10 +713,14 @@ function lineChart(container, series, lines, opts={}){
     });
   }
   lines.forEach(l=>{
-    let d='';
-    series.forEach((s,i)=>{ d += (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(s[l.key]).toFixed(1) + ' '; });
+    let d=''; let started=false;
+    series.forEach((s,i)=>{
+      if(!Number.isFinite(s[l.key])) return; // salta puntos inválidos en vez de romper el path
+      d += (!started?'M':'L') + x(i).toFixed(1) + ' ' + y(s[l.key]).toFixed(1) + ' ';
+      started = true;
+    });
     svg += `<path d="${d}" fill="none" stroke="${l.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
-    series.forEach((s,i)=> svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(s[l.key]).toFixed(1)}" r="2.4" fill="${l.color}"/>`);
+    series.forEach((s,i)=>{ if(Number.isFinite(s[l.key])) svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(s[l.key]).toFixed(1)}" r="2.4" fill="${l.color}"/>`; });
   });
   svg += `</svg>`;
   container.innerHTML = svg;
@@ -633,22 +735,30 @@ function legendFor(container, lines){
 function renderMonitor(series){
   const ultimos12 = getUltimos12Meses(series);
   const last = series[series.length-1];
+  const disponibles = ultimos12.length;
   document.getElementById('monitor-rango').textContent =
-    `Nivel general y sus tres componentes · ventana automática: ${fmtPeriodo(ultimos12[0].periodo)} → ${fmtPeriodo(last.periodo)}`;
+    `Nivel general y sus tres componentes · ${disponibles} período${disponibles===1?'':'s'} disponible${disponibles===1?'':'s'} `+
+    `(${fmtPeriodo(ultimos12[0].periodo)} → ${fmtPeriodo(last.periodo)})` +
+    (disponibles<12 ? ' — todavía no hay 12 meses cargados' : '');
 
   const varMensual = calcularVariacionMensual(series, series.length-1);
   const var12 = calcularVariacion12Meses(series, series.length-1);
+  const tipoTag = last.tipoIndice==='oficial'
+    ? `<span class="tag oficial">Índice oficial INDEC</span>`
+    : `<span class="tag reconstruido">Índice reconstruido</span>`;
 
   function tarjeta(nombre, key, color){
-    const vm = calcularVariacionMensual(series, series.length-1);
-    const v12 = calcularVariacion12Meses(series, series.length-1);
+    const val = series[series.length-1][key];
+    const vmK = key==='idx_general' ? varMensual : calculateVariation(series, series.length-1, series.length-2, key);
+    const v12K = key==='idx_general' ? var12 : calculateVariation(series, series.length-1, Math.max(0,series.length-13), key);
     return `<div class="panel">
       <h3>${nombre}</h3>
-      <div class="kpi ${color}">${series[series.length-1][key].toFixed(1)}</div>
-      <small>var. mensual ${fmtPct(key==='idx_general'?varMensual: calculateVariation(series, series.length-1, series.length-2, key))}</small>
-      <div class="trend ${(key==='idx_general'?var12:calculateVariation(series, series.length-1, Math.max(0,series.length-13), key))>=0?'up':'down'}">
-        últimos 12 meses: ${fmtPct(key==='idx_general'?var12:calculateVariation(series, series.length-1, Math.max(0,series.length-13), key))}
+      <div class="kpi ${color}">${Number.isFinite(val) ? val.toFixed(1) : '—'}</div>
+      <small>var. mensual ${fmtPct(vmK)}</small>
+      <div class="trend ${(v12K??0)>=0?'up':'down'}">
+        últimos 12 meses: ${fmtPct(v12K)}
       </div>
+      <div style="margin-top:8px;">${tipoTag}</div>
     </div>`;
   }
 
@@ -673,11 +783,11 @@ function renderMonitor(series){
     html += `<tr>
       <td>${fmtPeriodo(s.periodo)}</td>
       <td>${fmtPct(vm)}</td>
-      <td>${s.idx_general.toFixed(2)}</td>
-      <td>${s.idx_materiales.toFixed(2)}</td>
-      <td>${s.idx_mano_obra.toFixed(2)}</td>
-      <td>${s.idx_gastos.toFixed(2)}</td>
-      <td><span class="tag ${s.origen==='estimado'?'estimado':'oficial'}">${s.origen}</span></td>
+      <td>${Number.isFinite(s.idx_general) ? s.idx_general.toFixed(2) : '—'}</td>
+      <td>${Number.isFinite(s.idx_materiales) ? s.idx_materiales.toFixed(2) : '—'}</td>
+      <td>${Number.isFinite(s.idx_mano_obra) ? s.idx_mano_obra.toFixed(2) : '—'}</td>
+      <td>${Number.isFinite(s.idx_gastos) ? s.idx_gastos.toFixed(2) : '—'}</td>
+      <td><span class="tag ${origenTagClass(s)}">${origenLabel(s)}</span></td>
     </tr>`;
   });
   document.getElementById('tabla-serie').innerHTML = html;
@@ -689,6 +799,7 @@ function renderFuenteInfo(meta, modo, series){
     <div><div class="k">Fuente</div><div class="v">INDEC</div></div>
     <div><div class="k">Indicador</div><div class="v">ICC (Gran Buenos Aires)</div></div>
     <div><div class="k">Frecuencia</div><div class="v">Mensual</div></div>
+    <div><div class="k">Base del índice</div><div class="v">${last.tipoIndice==='oficial' ? '1993 = 100 (oficial)' : 'técnica = 100 (reconstruida)'}</div></div>
     <div><div class="k">Último período</div><div class="v">${fmtPeriodo(last.periodo)}</div></div>
     <div><div class="k">Modo</div><div class="v" style="color:${modo==='oficial'?'var(--cyan)':'var(--amber)'}">${modo==='oficial'?'Oficial (API en vivo)':'Contingencia (local)'}</div></div>
     <div><div class="k">Actualizado</div><div class="v">${meta.ultima_actualizacion||'—'}</div></div>
@@ -696,6 +807,11 @@ function renderFuenteInfo(meta, modo, series){
 }
 
 function renderCortes(series, thresholdPct){
+  document.getElementById('cortes-intro').textContent =
+    `Cada vez que la variación acumulada desde el último punto de referencia alcanza el umbral de simulación configurado (actualmente ${thresholdPct}%), el sistema registra un corte y reinicia la acumulación a partir de índices — nunca sumando porcentajes mensuales.`;
+  document.getElementById('legend-estados').innerHTML = estadoLegendItems()
+    .map(it=>`<span><span class="badge ${it.estado}"><i></i></span> ${it.texto}</span>`).join('');
+
   const {cuts, exposicion} = calculateExposure(series, thresholdPct);
   const tl = document.getElementById('timeline');
   const nodes = [{periodo:series[0].periodo, tipo:'base'}];
@@ -749,7 +865,7 @@ function renderExposicion(series, thresholdPct){
   document.getElementById('exposicion-kpis').innerHTML = `
     <div class="panel"><h3>Último corte / base</h3><div class="kpi amber">${fmtPeriodo(exposicion.basePeriodo)}</div><small>${cuts.length} corte(s) registrados en la serie</small></div>
     <div class="panel"><h3>Meses sin adecuación</h3><div class="kpi cyan">${exposicion.mesesTranscurridos}</div><small>desde ${fmtPeriodo(exposicion.basePeriodo)} hasta ${fmtPeriodo(exposicion.periodoActual)}</small></div>
-    <div class="panel"><h3>Variación acumulada</h3><div class="kpi ${exposicion.estado==='rojo'||exposicion.estado==='naranja'?'red':'amber'}">${fmtPct(exposicion.variacionAcumulada)}</div><small>umbral: ${thresholdPct}%</small></div>
+    <div class="panel"><h3>Variación acumulada</h3><div class="kpi ${exposicion.estado}">${fmtPct(exposicion.variacionAcumulada)}</div><small>umbral: ${thresholdPct}%</small></div>
     <div class="panel"><h3>Estado</h3><div class="badge ${exposicion.estado}" style="font-size:13px; padding:6px 12px;"><i></i>${estadoLabel(exposicion.estado)}</div></div>
   `;
   const pct = Math.min(100, (exposicion.variacionAcumulada/thresholdPct)*100);
@@ -788,12 +904,12 @@ function handleRunSimulador(series){
 
   document.getElementById('sim-kpis').innerHTML = `
     <div class="panel"><h3>Variación acumulada total</h3><div class="kpi amber">${fmtPct(r.variacionTotal)}</div><small>${fmtPeriodo(mesBase)} → ${fmtPeriodo(mesAnalisis)}</small></div>
-    <div class="panel"><h3>Cortes detectados</h3><div class="kpi cyan">${r.cuts.length}</div><small>con umbral ${umbral}%</small></div>
+    <div class="panel"><h3>Cortes detectados</h3><div class="kpi cyan">${r.cuts.length}</div><small>con umbral de simulación ${umbral}%</small></div>
     <div class="panel"><h3>Meses desde último corte</h3><div class="kpi cyan">${r.exposicion.mesesTranscurridos}</div><small>desde ${fmtPeriodo(r.exposicion.basePeriodo)}</small></div>
-    <div class="panel"><h3>Distancia al próximo 5%</h3><div class="kpi ${r.exposicion.estado}">${r.exposicion.distanciaAlUmbral.toFixed(2)} p.p.</div><small>estado: ${estadoLabel(r.exposicion.estado)}</small></div>
+    <div class="panel"><h3>Distancia al próximo corte</h3><div class="kpi ${r.exposicion.estado}">${r.exposicion.distanciaAlUmbral.toFixed(2)} p.p.</div><small>estado: ${estadoLabel(r.exposicion.estado)}</small></div>
     <div class="panel"><h3>Monto contractual ajustado</h3><div class="kpi amber">${fmtMoney(r.montoAjustado)}</div><small>tras ${r.cuts.length} corte(s)</small></div>
   `;
-  document.getElementById('sim-impacto').textContent = fmtMoney(r.exposicionEconomicaEstimada);
+  document.getElementById('sim-impacto').textContent = fmtMoney(r.impactoTeoricoActualizacion);
 
   const tbl = document.getElementById('sim-tabla-cortes');
   if(r.cuts.length===0){
@@ -821,8 +937,8 @@ function renderBrecha(series, thresholdPct){
     if(cut){ baseVal = baseVal * (1+cut.variacionAcumulada/100); steps[i].contrato = baseVal; }
   }
   const lines = [
-    {key:'idx_general', color:'var(--amber)', label:'Costo real (ICC nivel general)'},
-    {key:'contrato', color:'var(--cyan)', label:'Contrato ajustado por cortes'},
+    {key:'idx_general', color:'var(--amber)', label:'ICC nivel general — evolución acumulada'},
+    {key:'contrato', color:'var(--cyan)', label:'Actualización contractual simulada (cortes)'},
   ];
   lineChart(document.getElementById('chart-equilibrio'), steps, lines, {cutPeriods:cuts.map(c=>c.periodo)});
   legendFor(document.getElementById('legend-equilibrio'), lines);
@@ -834,7 +950,18 @@ function renderBrecha(series, thresholdPct){
 async function init(){
   const {raw, modo} = await getICCData();
   const validacion = validateICCData(raw);
-  if(!validacion.ok) console.warn('[validateICCData] Problemas de calidad detectados:', validacion.errores);
+
+  const qualityBanner = document.getElementById('quality-banner');
+  if(!validacion.ok){
+    console.warn('[validateICCData] Problemas críticos detectados:', validacion.criticos);
+    qualityBanner.classList.add('show');
+    document.getElementById('quality-detalle').textContent = validacion.criticos.join(' · ');
+  } else {
+    qualityBanner.classList.remove('show');
+    if(validacion.recuperables && validacion.recuperables.length){
+      console.info('[validateICCData] Problemas recuperables (corregidos automáticamente):', validacion.recuperables);
+    }
+  }
 
   const series = normalizeICCData(raw);
   STATE = { series, meta: raw.meta || {}, modo };
@@ -844,8 +971,9 @@ async function init(){
   const engineStatus = document.getElementById('engine-status');
   if(modo === 'contingencia'){
     banner.classList.add('show');
+    const tipoTxt = series[series.length-1].tipoIndice==='oficial' ? 'índice oficial' : 'índice reconstruido';
     document.getElementById('contingency-periodo').textContent =
-      `datos hasta ${fmtPeriodo(series[series.length-1].periodo)}`;
+      `datos hasta ${fmtPeriodo(series[series.length-1].periodo)} (${tipoTxt})`;
     dot.classList.add('contingencia');
     engineStatus.textContent = '● modo contingencia';
     engineStatus.classList.add('warn');
