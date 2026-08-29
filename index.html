@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="ICC + Contrato + Avance + Certificación + Costos + Adecuaciones + Proyección + Riesgo + Decisión.">
 <meta name="twitter:image" content="https://evaluar-ajuste-precios-indec.vercel.app/assets/og-image.png">
 <style>
-  :root{
+  :root, [data-theme="dark"]{
     --bg:            #0a0e13;
     --bg-panel:      #11171e;
     --bg-panel-2:    #161d26;
@@ -28,10 +28,13 @@
     --text:          #e7edf3;
     --text-dim:      #7c8a97;
     --text-faint:    #4d5a66;
+    /* Identidad de marca INDEC: marino (decisión/identidad) + teal (datos/información) */
+    --brand:         #4c7fac;
+    --brand-dim:     #223850;
     --amber:         #e8a33d;
     --amber-dim:     #6b4d22;
-    --cyan:          #49d3c6;
-    --cyan-dim:      #1f4f4a;
+    --cyan:          #3fc4ae;
+    --cyan-dim:      #1a463f;
     --red:           #e2574c;
     --red-dim:       #5c2723;
     --green:         #4caf6e;
@@ -39,7 +42,33 @@
     --orange:        #e08a3d;
     --orange-dim:    #5c3c1f;
     --violet:        #8a7ce8;
-    --blue:          #5fb8e0;
+    --blue:          #6fa8d8;
+    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+  [data-theme="light"]{
+    --bg:            #eef5fa;
+    --bg-panel:      #ffffff;
+    --bg-panel-2:    #eaf2f8;
+    --grid:          #e3edf4;
+    --border:        #d6e4ee;
+    --text:          #1f2d3d;
+    --text-dim:      #5a6b7d;
+    --text-faint:    #93a2b0;
+    --brand:         #33465c;
+    --brand-dim:     #dbe6f0;
+    --amber:         #c97d1e;
+    --amber-dim:     #fbead1;
+    --cyan:          #1f8c7f;
+    --cyan-dim:      #dcf3ef;
+    --red:           #c13a30;
+    --red-dim:       #fbe2e0;
+    --green:         #2e8b57;
+    --green-dim:     #dff3e7;
+    --orange:        #c76a1f;
+    --orange-dim:    #fbe9da;
+    --violet:        #6b5fc4;
+    --blue:          #4a85b8;
     --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
   }
@@ -66,6 +95,11 @@
     display:flex; align-items:center; gap:6px; white-space:nowrap;
   }
   .status-chip.warn{color:var(--amber); border-color:var(--amber-dim);}
+  .theme-toggle{
+    font-size:16px; line-height:1; background:var(--bg-panel-2); border:1px solid var(--border);
+    color:var(--text); border-radius:20px; width:32px; height:32px; cursor:pointer; flex-shrink:0;
+  }
+  .theme-toggle:hover{border-color:var(--brand-dim);}
 
   .contingency-banner{
     display:none; background:linear-gradient(90deg, rgba(232,163,61,.12), transparent);
@@ -85,8 +119,8 @@
     display:flex; align-items:center; gap:6px;
   }
   .tab .n{color:var(--text-faint); font-weight:700;}
-  .tab.active{color:var(--amber); border-bottom-color:var(--amber);}
-  .tab.active .n{color:var(--amber);}
+  .tab.active{color:var(--brand); border-bottom-color:var(--brand);}
+  .tab.active .n{color:var(--brand);}
   .tab:hover:not(.active){color:var(--text);}
 
   /* Filtro global de mes de corte — afecta a todos los módulos */
@@ -103,17 +137,20 @@
   @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
 
   .screen-head{margin-bottom:16px;}
-  .screen-head .eyebrow{font-family:var(--mono); font-size:10.5px; color:var(--amber); letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px;}
+  .screen-head .eyebrow{font-family:var(--mono); font-size:10.5px; color:var(--brand); letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px;}
   .screen-head h2{font-size:19px; font-weight:700;}
   .screen-head p{font-size:12.5px; color:var(--text-dim); margin-top:4px; max-width:65ch;}
 
   .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:12px; margin-bottom:16px;}
   .grid.g6{grid-template-columns:repeat(auto-fit, minmax(150px,1fr));}
-  .panel{background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px;}
-  .panel h3{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); font-weight:600; margin-bottom:10px;}
-  .kpi{font-family:var(--mono); font-size:24px; font-weight:700; line-height:1;}
-  .kpi small{font-size:11px; color:var(--text-dim); font-weight:400; display:block; margin-top:6px; font-family:var(--sans);}
+  .grid{display:flex; gap:8px; margin-bottom:16px; align-items:stretch;}
+  .grid > .panel{flex:1 1 0; min-width:0;}
+  .panel{background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; overflow:hidden;}
+  .panel h3{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); font-weight:600; margin-bottom:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .kpi{font-family:var(--mono); font-size:24px; font-weight:700; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .kpi small{font-size:11px; color:var(--text-dim); font-weight:400; display:block; margin-top:6px; font-family:var(--sans); white-space:normal;}
   .kpi.amber{color:var(--amber);} .kpi.cyan{color:var(--cyan);} .kpi.red{color:var(--red);} .kpi.green{color:var(--green);}
+  .kpi.brand{color:var(--brand);}
   .kpi.violet{color:var(--violet);} .kpi.blue{color:var(--blue);}
   .kpi.verde{color:var(--green);} .kpi.amarillo{color:var(--amber);} .kpi.naranja{color:var(--orange);} .kpi.rojo{color:var(--red);}
   .trend{font-size:11px; font-family:var(--mono); margin-top:4px;}
@@ -177,14 +214,14 @@
   }
   input:focus, select:focus{outline:none; border-color:var(--amber);}
   button.run{
-    background:var(--amber); color:#1a1204; border:none; padding:10px 22px; border-radius:6px;
+    background:var(--brand); color:#fff; border:none; padding:10px 22px; border-radius:6px;
     font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.04em; cursor:pointer; text-transform:uppercase;
   }
-  button.run:hover{background:#f2b654;}
+  button.run:hover{filter:brightness(1.15);}
   button.run.secondary{background:var(--bg-panel-2); color:var(--text); border:1px solid var(--border);}
   button.run.secondary:hover{border-color:var(--cyan);}
   a.linklike{background:none; border:1px solid var(--border); color:var(--text-dim); padding:6px 12px; border-radius:20px; font-family:var(--mono); font-size:10.5px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;}
-  a.linklike:hover{color:var(--cyan); border-color:var(--cyan-dim);}
+  a.linklike:hover{color:var(--brand); border-color:var(--brand-dim);}
 
   .result-block{display:none; margin-top:18px;}
   .result-block.show{display:block; animation:fadein .3s ease;}
@@ -210,7 +247,7 @@
     border:1px solid var(--border); padding:5px 12px; border-radius:20px; cursor:pointer; letter-spacing:.02em;
   }
   .range-chip:hover{color:var(--text); border-color:var(--text-faint);}
-  .range-chip.active{color:#1a1204; background:var(--amber); border-color:var(--amber); font-weight:700;}
+  .range-chip.active{color:#fff; background:var(--brand); border-color:var(--brand); font-weight:700;}
 
   /* Matriz de riesgo 3x3 */
   .risk-matrix{display:grid; grid-template-columns:auto repeat(3, 1fr); gap:4px; margin-top:10px; font-family:var(--mono); font-size:10px;}
@@ -249,7 +286,11 @@
   a{color:var(--cyan);}
 
   @media (max-width:560px){
-    .kpi{font-size:20px;}
+    .grid{gap:5px;}
+    .panel{padding:8px 7px;}
+    .panel h3{font-size:8.5px; margin-bottom:5px; letter-spacing:.02em;}
+    .kpi{font-size:clamp(10px, 3.6vw, 18px);}
+    .kpi small{font-size:8.5px; margin-top:3px;}
     th,td{padding:6px 6px; font-size:11px;}
     .risk-matrix{font-size:9px;}
     .risk-cell{min-height:56px;}
@@ -268,6 +309,7 @@
     </div>
   </div>
   <div class="status-chip" id="engine-status">● motor activo</div>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema claro/oscuro">🌙</button>
 </div>
 
 <div class="contingency-banner" id="contingency-banner">
@@ -1132,14 +1174,14 @@ function renderMonitor(series, rangeMonths){
 
   document.getElementById('monitor-kpis').innerHTML =
     tarjeta('Nivel general','idx_general','amber') +
-    tarjeta('Materiales','idx_materiales','cyan') +
-    tarjeta('Mano de obra','idx_mano_obra','violet') +
+    tarjeta('Materiales','idx_materiales','brand') +
+    tarjeta('Mano de obra','idx_mano_obra','cyan') +
     tarjeta('Gastos generales','idx_gastos','blue');
 
   const lines = [
     {key:'idx_general', color:'var(--amber)', label:'Nivel general'},
-    {key:'idx_materiales', color:'var(--cyan)', label:'Materiales'},
-    {key:'idx_mano_obra', color:'var(--violet)', label:'Mano de obra'},
+    {key:'idx_materiales', color:'var(--brand)', label:'Materiales'},
+    {key:'idx_mano_obra', color:'var(--cyan)', label:'Mano de obra'},
     {key:'idx_gastos', color:'var(--blue)', label:'Gastos generales'},
   ];
   lineChart(document.getElementById('chart-evolucion'), rango, lines);
@@ -1642,6 +1684,32 @@ async function init(){
 }
 
 init();
+
+/* ======================================================================
+   TEMA CLARO / OSCURO — paleta INDEC en ambos modos.
+   Persiste la elección en localStorage; si el usuario nunca eligió,
+   respeta la preferencia del sistema operativo la primera vez.
+   ====================================================================== */
+(function initTheme(){
+  const root = document.documentElement;
+  const btn = document.getElementById('theme-toggle');
+  const saved = localStorage.getItem('icc-theme');
+  const prefiereClaro = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const inicial = saved || (prefiereClaro ? 'light' : 'dark');
+  applyTheme(inicial);
+
+  btn.addEventListener('click', ()=>{
+    const actual = root.getAttribute('data-theme') || 'dark';
+    const nuevo = actual === 'dark' ? 'light' : 'dark';
+    applyTheme(nuevo);
+    localStorage.setItem('icc-theme', nuevo);
+  });
+
+  function applyTheme(t){
+    root.setAttribute('data-theme', t);
+    btn.textContent = t === 'dark' ? '🌙' : '☀️';
+  }
+})();
 </script>
 </body>
 </html>
